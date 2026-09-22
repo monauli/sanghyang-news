@@ -1,0 +1,173 @@
+﻿===============================================================
+  SANGHYANG HIGHLIGHTS
+  Aplikasi pembuat newsletter berita bulanan
+===============================================================
+
+Ikuti langkah 1 sampai 4 di bawah ini. Cukup sekali saja.
+Sesudah itu, tiap kali mau memakai, langsung ke langkah 4.
+
+Perlu waktu sekitar 10 menit untuk semuanya.
+
+
+---------------------------------------------------------------
+  LANGKAH 1 - PASANG NODE.JS
+---------------------------------------------------------------
+
+Aplikasi ini butuh satu program pendukung bernama Node.js.
+
+  a. Cari file yang saya kirim terpisah:
+
+         node-v24.20.0-x64.msi
+
+  b. Klik dua kali file itu.
+
+  c. Akan muncul jendela pemasangan. Klik "Next" terus sampai
+     selesai. Tidak ada yang perlu diubah, biarkan semua
+     pilihannya apa adanya.
+
+  d. Klik "Finish".
+
+
+  >>> PENTING SEKALI <<<
+
+      SETELAH ITU, RESTART KOMPUTER.
+
+      Matikan lalu hidupkan lagi komputernya. Jangan cuma
+      menutup jendelanya.
+
+      Ini langkah yang paling sering terlewat. Kalau komputer
+      tidak di-restart, langkah 3 nanti akan bilang Node.js
+      belum terpasang - padahal sudah. Komputernya belum tahu.
+
+      Restart dulu. Baru lanjut ke langkah 2.
+
+
+---------------------------------------------------------------
+  LANGKAH 2 - KELUARKAN FOLDER INI DARI ZIP
+---------------------------------------------------------------
+
+  a. Klik kanan file "Sanghyang News.zip"
+
+  b. Pilih "Extract All..." (atau "Ekstrak Semua")
+
+  c. Pilih tempat menyimpannya. Bebas, misalnya:
+
+         D:\
+
+  d. Klik "Extract".
+
+Sesudah itu akan ada folder bernama "Sanghyang News".
+Buka folder itu.
+
+Catatan: jangan menjalankan aplikasi langsung dari dalam ZIP.
+Keluarkan dulu foldernya, baru dipakai.
+
+
+---------------------------------------------------------------
+  LANGKAH 3 - SIAPKAN APLIKASINYA (sekali saja)
+---------------------------------------------------------------
+
+Di dalam folder "Sanghyang News", cari file:
+
+       Setup Pertama Kali.bat
+
+Klik dua kali file itu.
+
+Akan muncul jendela hitam berisi tulisan yang berjalan.
+Itu normal. Biarkan saja.
+
+  - Butuh koneksi internet.
+  - Butuh sekitar 5 menit. Kadang lebih lama, tergantung
+    kecepatan internet.
+  - Layarnya kadang diam agak lama seperti macet. Itu wajar,
+    tunggu saja.
+
+TUNGGU sampai muncul tulisan:
+
+       SETUP SELESAI
+
+Kalau sudah muncul tulisan itu, tekan sembarang tombol untuk
+menutup jendelanya.
+
+Langkah 3 ini cukup dilakukan SEKALI SEUMUR HIDUP. Besok-besok
+tidak perlu lagi.
+
+
+---------------------------------------------------------------
+  LANGKAH 4 - MENJALANKAN APLIKASINYA
+---------------------------------------------------------------
+
+Inilah satu-satunya langkah yang dipakai sehari-hari.
+
+Klik dua kali:
+
+       Jalankan Sanghyang.bat
+
+Akan muncul jendela hitam, lalu browser terbuka sendiri dengan
+aplikasinya.
+
+
+  >>> JANGAN TUTUP JENDELA HITAM ITU <<<
+
+      Jendela hitam itu adalah aplikasinya sendiri. Selama
+      masih dipakai, biarkan terbuka. Boleh dikecilkan
+      (tombol minimize), tapi jangan ditutup.
+
+      Kalau jendela hitam ditutup, aplikasi di browser langsung
+      berhenti dan pekerjaan yang belum di-download akan hilang.
+
+      Kalau sudah selesai memakai dan sudah men-download hasilnya,
+      barulah jendela hitam itu boleh ditutup.
+
+
+---------------------------------------------------------------
+  LANGKAH 5 - SANDI MASUK
+---------------------------------------------------------------
+
+Saat pertama kali dibuka, aplikasi akan meminta sandi.
+
+       Sandinya:  sanghyang2026
+
+Ketik apa adanya, huruf kecil semua, tanpa spasi.
+
+
+---------------------------------------------------------------
+  KALAU ADA MASALAH
+---------------------------------------------------------------
+
+Buka file README.md di folder yang sama. Di dalamnya ada
+daftar pesan yang mungkin muncul beserta cara mengatasinya.
+
+File README.md bisa dibuka dengan Notepad, atau dengan browser.
+
+Dua masalah yang paling sering:
+
+  * Muncul tulisan "NODE.JS BELUM TERPASANG" padahal sudah
+    dipasang.
+    -> Komputernya belum di-restart. Restart dulu, lalu ulangi
+       langkah 3.
+
+  * Browser tidak terbuka sendiri.
+    -> Lihat jendela hitamnya. Di situ tertulis alamat yang
+       harus dibuka, misalnya http://localhost:3000
+       Ketik alamat itu di browser.
+
+
+---------------------------------------------------------------
+  SEDIKIT CATATAN
+---------------------------------------------------------------
+
+  * Aplikasi ini berjalan di komputer sendiri, bukan di
+    internet. Tidak ada data yang dikirim ke mana-mana selain
+    ke layanan yang memang dipakai untuk meringkas berita.
+
+  * Jatah meringkas berita ada batasnya, 500 kali sehari,
+    dan dipakai bersama. Untuk membuat satu newsletter
+    biasanya cuma perlu 5 sampai 8 kali. Jadi lebih dari
+    cukup.
+
+  * Selama memakai aplikasi, jangan menutup tab browser-nya
+    sebelum hasilnya selesai di-download.
+
+
+Selamat mencoba.
