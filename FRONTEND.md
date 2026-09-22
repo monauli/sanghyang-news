@@ -353,8 +353,9 @@ Prioritas **desktop** — ini alat kerja kantor. Tablet diusahakan layak. Mobile
 
 Halaman admin baru berada di `/admin/scraping` dan menggunakan auth yang sama
 dengan aplikasi lama. Halaman menampilkan source aktif, tombol **Run News Now**,
-status run, hitungan discovered/saved/duplicate/error, serta detail error yang
-aman dibaca staf. Polling hanya berjalan setelah user memulai run dan berhenti
+status run, dan hitungan discovered/saved/duplicate/error. Detail error yang
+aman dibaca staf tersedia melalui endpoint admin API; halaman saat ini hanya
+menampilkan hitungan aggregate. Polling hanya berjalan setelah user memulai run dan berhenti
 saat run terminal.
 
 Workflow `/`, `/review`, dan `/preview` tidak berubah. Phase 1 belum menyediakan
