@@ -348,3 +348,15 @@ Prioritas **desktop** — ini alat kerja kantor. Tablet diusahakan layak. Mobile
 - ❌ Dark mode
 - ❌ Toggle Bahasa Inggris
 - ❌ Menampilkan angka skor mentah ke user
+
+## Market Intelligence — Phase 1
+
+Halaman admin baru berada di `/admin/scraping` dan menggunakan auth yang sama
+dengan aplikasi lama. Halaman menampilkan source aktif, tombol **Run News Now**,
+status run, hitungan discovered/saved/duplicate/error, serta detail error yang
+aman dibaca staf. Polling hanya berjalan setelah user memulai run dan berhenti
+saat run terminal.
+
+Workflow `/`, `/review`, dan `/preview` tidak berubah. Phase 1 belum menyediakan
+dashboard F&B/event, competitor, harga, promosi, review, trends, insights,
+recommendations, atau scheduled jobs.

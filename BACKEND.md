@@ -512,3 +512,37 @@ yang memakan waktu jauh lebih banyak daripada mesinnya.
 >
 > Indikator progres tetap per artikel dan per tahap (FRONTEND.md §5) — bukan
 > karena lambat, tapi karena tahap yang gagal harus bisa ditunjuk.
+
+## Market Intelligence — Phase 1
+
+Persistence baru memakai PostgreSQL + Prisma dan hidup berdampingan dengan
+workflow newsletter lama. Setup lokal:
+
+```powershell
+Copy-Item .env.example .env.local
+# isi DATABASE_URL, lalu:
+npm install
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+Pipeline news: source registry → RSS/HTTP adapter → HTTP extractor → browser
+fallback bila hasil kosong/terlalu pendek → normalisasi → dedupe deterministik
+→ `Article`, `ScrapeRun`, dan `ScrapeError`. Browser tidak dijalankan untuk
+artikel yang sudah menghasilkan konten HTTP valid.
+
+Registry menyimpan `name`, `domain`, `category`, `method`, `enabled`, `priority`,
+interval, waktu run/sukses terakhir, dan failure count. Artikel dipertahankan
+sekali berdasarkan canonical URL, lalu fingerprint source/judul/tanggal/hash;
+duplikat tidak menimpa artikel pertama. Run menyimpan discovered, saved,
+duplicates, errors, status, dan error stage/message yang aman ditampilkan.
+
+Admin dapat melihat health dan riwayat melalui `GET /api/admin/scraping`,
+menjalankan news secara manual melalui `POST /api/admin/scraping`, dan membaca
+detail run melalui `GET /api/admin/scraping/:runId`; UI-nya ada di
+`/admin/scraping` dan tetap berada di balik auth `proxy.ts`.
+
+Phase 1 sengaja tidak membuat F&B/event/competitor/price/promotion/review,
+trend, insight, recommendation, scheduler, atau deployment produksi.

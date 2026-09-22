@@ -924,3 +924,28 @@ It should evolve into:
 Main principle:
 
 Collect public information -> preserve historical data -> analyze patterns -> provide evidence-based marketing intelligence for Sanghyang Resort.
+
+## Phase 1 delivered
+
+Phase 1 is the stable news foundation only. It adds PostgreSQL/Prisma models
+for sources, articles, scrape runs, and scrape errors; deterministic URL and
+composite deduplication; RSS and HTTP adapters; browser extraction only as a
+short/empty HTTP fallback; a protected manual news run API; and
+`/admin/scraping` for source health and run history.
+
+Local setup:
+
+```powershell
+Copy-Item .env.example .env.local
+# set DATABASE_URL and APP_PASSWORD in .env.local
+npm install
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+The old newsletter routes remain the compatibility baseline. No scheduled
+scraping, F&B/event collectors, competitor monitoring, price/promotion history,
+review intelligence, trends, insights, or recommendations are included yet.
+Those belong to later phases and must not be inferred from the Phase 1 schema.

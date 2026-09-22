@@ -31,6 +31,29 @@ Klik dua kali **`Setup Pertama Kali.bat`**, tunggu sampai muncul
 
 `Setup Pertama Kali.bat` cuma perlu dijalankan **sekali seumur pemasangan**.
 
+### Mode developer: Market Intelligence Phase 1
+
+Phase 1 menambahkan persistence PostgreSQL/Prisma, source registry, logging
+scrape, scraper berlapis, dan halaman admin `/admin/scraping`. Workflow
+newsletter lama tetap menjadi workflow utama.
+
+Prasyarat lokal:
+
+```powershell
+Copy-Item .env.example .env.local
+# isi DATABASE_URL PostgreSQL yang aktif di .env.local
+npm install
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+`DATABASE_URL` contoh: `postgresql://user:password@localhost:5432/sanghyang_news`.
+Halaman admin memakai `APP_PASSWORD` yang sama dengan aplikasi lama. Phase 1
+tidak mencakup scheduled jobs, F&B/event collectors, competitor, price,
+promotion, review, trends, insights, atau recommendation modules.
+
 ---
 
 ## Cara pakai
