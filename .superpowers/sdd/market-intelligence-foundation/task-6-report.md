@@ -23,3 +23,15 @@ The existing proxy matcher already protects every non-static page, including `/a
 ## Concern
 
 - The current API waits for the scrape service before responding, so polling normally ends after the immediate refresh. The page still polls when the API reports a running run, which covers an asynchronous service response without adding client-side infrastructure.
+
+## Review fix
+
+- Polling now follows only the `runId` returned by POST, including while that run is temporarily absent from the listing; unrelated running runs no longer affect it. The browser regression fixture keeps an unrelated run running throughout.
+
+### Verification
+
+- `npx tsx scripts/test-admin-page.ts`
+- `npx tsx scripts/test-admin-scraping.ts`
+- `npx tsc --noEmit`
+- `npm run lint` (passes with two pre-existing unused-variable warnings in `scripts/test-kuota.ts` and `spike5.mjs`)
+- `npm run build`

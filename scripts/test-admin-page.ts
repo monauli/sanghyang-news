@@ -9,8 +9,8 @@ const source = {
   priority: 0, intervalMinutes: null, lastRunAt: "2026-09-22T00:00:00.000Z",
   lastSuccessAt: "2026-09-22T00:00:00.000Z", failureCount: 2,
 };
-const run = (status: "running" | "success") => ({
-  id: "run-1", sourceId: source.id, job: "news", status, startedAt: "2026-09-22T00:00:00.000Z",
+const run = (id: string, status: "running" | "success") => ({
+  id, sourceId: source.id, job: "news", status, startedAt: "2026-09-22T00:00:00.000Z",
   finishedAt: status === "success" ? "2026-09-22T00:01:00.000Z" : null,
   recordsDiscovered: 7, recordsSaved: 5, duplicates: 2, errors: 1, createdAt: "2026-09-22T00:00:00.000Z",
 });
@@ -74,8 +74,9 @@ void (async () => {
       getRequests++;
       if (mode === "error") return void request.respond({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "postgresql://admin:password@example.com/secret" }) });
       if (mode === "empty") return void request.respond({ contentType: "application/json", body: JSON.stringify({ sources: [], runs: [] }) });
-      const status = started && pollsAfterStart++ < 1 ? "running" : "success";
-      return void request.respond({ contentType: "application/json", body: JSON.stringify({ sources: [source], runs: [run(status)] }) });
+      const target = started ? pollsAfterStart++ : 2;
+      const runs = target === 0 ? [run("unrelated-run", "running")] : [run("run-1", target === 1 ? "running" : "success"), run("unrelated-run", "running")];
+      return void request.respond({ contentType: "application/json", body: JSON.stringify({ sources: [source], runs }) });
     });
 
     const pageResponse = await page.goto(`${base}/admin/scraping`, { waitUntil: "domcontentloaded" });

@@ -37,7 +37,7 @@ export default function HalamanAdminScraping() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const [polling, setPolling] = useState(false);
+  const [runId, setRunId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -62,12 +62,15 @@ export default function HalamanAdminScraping() {
   }, [load]);
 
   useEffect(() => {
-    if (!polling) return;
-    const timeout = window.setTimeout(() => {
-      void load().then((next) => setPolling(!!next?.runs.some((run) => run.status === 'running')));
+    if (!runId) return;
+    const interval = window.setInterval(() => {
+      void load().then((next) => {
+        const run = next?.runs.find((item) => item.id === runId);
+        if (run && run.status !== 'running') setRunId(null);
+      });
     }, 1000);
-    return () => window.clearTimeout(timeout);
-  }, [load, polling]);
+    return () => window.clearInterval(interval);
+  }, [load, runId]);
 
   async function runNewsNow() {
     setStarting(true);
@@ -77,8 +80,13 @@ export default function HalamanAdminScraping() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job: 'news' }),
       });
       if (!response.ok) throw new Error();
+      const started: unknown = await response.json();
+      if (!started || typeof started !== 'object' || typeof (started as { runId?: unknown }).runId !== 'string') throw new Error();
+      const runId = (started as { runId: string }).runId;
+      setRunId(runId);
       const next = await load();
-      setPolling(!!next?.runs.some((run) => run.status === 'running'));
+      const run = next?.runs.find((item) => item.id === runId);
+      if (run && run.status !== 'running') setRunId(null);
     } catch {
       setError('Tidak dapat memulai pengambilan berita. Coba lagi.');
     } finally {
@@ -87,6 +95,7 @@ export default function HalamanAdminScraping() {
   }
 
   const latestRun = status?.runs[0];
+  const polling = runId !== null;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
