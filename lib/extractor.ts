@@ -18,7 +18,7 @@ export type ExtractResult = {
   error?: string;
 };
 
-const MIN_TEXT = 1500;
+export const MIN_TEXT = 1500;
 const MIN_IMAGE_WIDTH = 300;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -44,14 +44,16 @@ export const FULL_HEADERS: Record<string, string> = {
 };
 
 /** Retry 2 tahap — sebagian portal menolak referer eksternal. */
-async function fetchHtml(url: string) {
-  let res = await fetchAman(url, { headers: FULL_HEADERS, signal: timeout(12000) });
+type HtmlFetcher = (url: string, init?: RequestInit) => Promise<Response>;
+
+async function fetchHtml(url: string, fetcher: HtmlFetcher) {
+  let res = await fetcher(url, { headers: FULL_HEADERS, signal: timeout(12000) });
   if (res.ok) return { res, attempt: 'header-lengkap' as const };
 
   const h2 = { ...FULL_HEADERS };
   delete h2.Referer;
   delete h2['Sec-Fetch-Site'];
-  res = await fetchAman(url, { headers: h2, signal: timeout(12000) });
+  res = await fetcher(url, { headers: h2, signal: timeout(12000) });
   return { res, attempt: res.ok ? ('tanpa-referer' as const) : ('gagal' as const) };
 }
 
@@ -151,7 +153,7 @@ export function berhalaman(html: string, url: string): boolean {
   return false;
 }
 
-export async function extractOne(url: string): Promise<ExtractResult> {
+export async function extractOne(url: string, fetcher: HtmlFetcher = fetchAman): Promise<ExtractResult> {
   const base: ExtractResult = {
     url, title: null, fullText: null, imageUrl: null, imageWidth: null,
     attempt: 'gagal', warnings: [],
@@ -162,7 +164,7 @@ export async function extractOne(url: string): Promise<ExtractResult> {
   let html: string;
   let attempt: ExtractResult['attempt'];
   try {
-    const r = await fetchHtml(url);
+    const r = await fetchHtml(url, fetcher);
     attempt = r.attempt;
     if (!r.res.ok) return { ...base, attempt, error: `HTTP ${r.res.status}` };
     html = await r.res.text();
