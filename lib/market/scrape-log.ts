@@ -10,6 +10,7 @@ export function sanitizeScrapeError(message: string): string {
   return message
     .replace(/\r?\n\s*at\s+.*$/gmi, "")
     .replace(/\b(?:postgres(?:ql)?|mysql|mongodb):\/\/\S+/gi, "[database-url-redacted]")
+    .replace(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi, "$1[redacted]@")
     .replace(/\b(authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\r\n]+/gi, "$1: [redacted]")
     .replace(/([?&\s](?:api[_-]?key|access[_-]?token|token|password|secret)=)[^&\s]+/gi, "$1[redacted]")
     .replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, ERROR_MESSAGE_MAX_LENGTH);
@@ -49,7 +50,7 @@ export function createScrapeLog(client: ScrapeLogClient) {
     recordScrapeError(input: { runId: string; sourceId: string; url?: string; stage: ScrapeStage; message: string; statusCode?: number }): Promise<ScrapeError> {
       return client.$transaction(async (tx) => {
         const error = await tx.scrapeError.create({
-          data: { ...input, message: sanitizeScrapeError(input.message) },
+          data: { ...input, ...(input.url ? { url: sanitizeScrapeError(input.url) } : {}), message: sanitizeScrapeError(input.message) },
         });
         await tx.scrapeRun.update({ where: { id: input.runId }, data: { errors: { increment: 1 } } });
         return error;

@@ -125,3 +125,8 @@ model ScrapeError {
   @@index([runId, createdAt])
   @@index([sourceId, createdAt])
 }
+
+model ScrapeLock {
+  job        ScrapeJob @id
+  acquiredAt DateTime  @default(now())
+}

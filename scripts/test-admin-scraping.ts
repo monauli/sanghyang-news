@@ -26,19 +26,28 @@ const source = (id: string, domain = `${id}.example.com`): Source => ({
 function createRunner(
   sources: Source[],
   scrape: (id: string) => Promise<Array<{ title: string; canonicalUrl: string }>>,
-  { hasRecentRunningRun = async () => false, recordError }: { hasRecentRunningRun?: (sourceId: string) => Promise<boolean>; recordError?: (error: Record<string, unknown>) => Promise<void> } = {},
+  { hasRecentRunningRun = async () => false, recordError, startError, finishError, claimNewsRun = async () => true, releaseNewsRun = async () => undefined }: {
+    hasRecentRunningRun?: (sourceId: string) => Promise<boolean>;
+    recordError?: (error: Record<string, unknown>) => Promise<void>;
+    startError?: (sourceId: string) => Promise<void>;
+    finishError?: (runId: string) => Promise<void>;
+    claimNewsRun?: () => Promise<boolean>;
+    releaseNewsRun?: () => Promise<void>;
+  } = {},
 ) {
   const runs: Array<Record<string, unknown>> = [];
   const errors: Array<Record<string, unknown>> = [];
   const saved: Array<Record<string, unknown>> = [];
-  const runner = createRunNews({
+  const dependencies: Parameters<typeof createRunNews>[0] & { hasRecentRunningRun: (sourceId: string) => Promise<boolean> } = {
     getEnabledSources: async () => sources,
     startRun: async (sourceId) => {
+      await startError?.(sourceId);
       const run = { id: `run-${runs.length + 1}`, sourceId, status: "running", recordsDiscovered: 0, recordsSaved: 0, duplicates: 0, errors: 0 };
       runs.push(run);
       return run as never;
     },
     finishRun: async (id, result) => {
+      await finishError?.(id);
       const run = runs.find((item) => item.id === id)!;
       Object.assign(run, { status: result.status, recordsDiscovered: result.discovered, recordsSaved: result.saved, duplicates: result.duplicates, errors: result.errors });
       return run as never;
@@ -54,7 +63,10 @@ function createRunner(
     },
     scrape: async ({ source: current }) => scrape(current.id),
     hasRecentRunningRun,
-  });
+    claimNewsRun,
+    releaseNewsRun,
+  };
+  const runner = createRunNews(dependencies);
   return { runner, runs, errors, saved };
 }
 
@@ -113,9 +125,42 @@ void (async () => {
   assert.equal(partial.runs[1].status, "success");
   assert.equal(partial.errors.length, 1);
 
-  const databaseBlocked = createRunner([source("source-1")], async () => [], { hasRecentRunningRun: async () => true });
+  const databaseBlocked = createRunner([source("source-1")], async () => [], { claimNewsRun: async () => false });
   await assert.rejects(() => databaseBlocked.runner.runNewsNow(), NewsRunInProgressError);
   assert.equal(databaseBlocked.runs.length, 0);
+
+  let claimed = false;
+  let releaseClaim!: () => void;
+  const claimNewsRun = async () => {
+    if (claimed) return false;
+    claimed = true;
+    return true;
+  };
+  const releaseNewsRun = async () => { claimed = false; };
+  const firstInstance = createRunner([source("source-1")], async () => await new Promise((resolve) => { releaseClaim = () => resolve([{ title: "Claimed", canonicalUrl: "https://example.com/claimed" }]); }), { claimNewsRun, releaseNewsRun });
+  const secondInstance = createRunner([source("source-1")], async () => [], { claimNewsRun, releaseNewsRun });
+  const claimedRun = firstInstance.runner.runNewsNow();
+  await Promise.resolve();
+  await assert.rejects(() => secondInstance.runner.runNewsNow(), NewsRunInProgressError);
+  releaseClaim();
+  await claimedRun;
+
+  const isolatedStart = createRunner(
+    [source("source-1"), source("source-2")],
+    async (id) => [{ title: id, canonicalUrl: `https://example.com/${id}` }],
+    { startError: async (id) => { if (id === "source-1") throw new Error("start unavailable"); } },
+  );
+  assert.deepEqual(await isolatedStart.runner.runNewsNow(), { runId: "run-1", status: "success" });
+  assert.equal(isolatedStart.runs[0].sourceId, "source-2");
+
+  let finishAttempts = 0;
+  const isolatedFinish = createRunner(
+    [source("source-1"), source("source-2")],
+    async (id) => [{ title: id, canonicalUrl: `https://example.com/${id}` }],
+    { finishError: async (id) => { if (id === "run-1" && ++finishAttempts === 1) throw new Error("finish unavailable"); } },
+  );
+  assert.deepEqual(await isolatedFinish.runner.runNewsNow(), { runId: "run-1,run-2", status: "partial" });
+  assert.equal(isolatedFinish.runs[0].status, "failed");
 
   const finalizesAfterErrorLogFailure = createRunner(
     [source("source-1")],

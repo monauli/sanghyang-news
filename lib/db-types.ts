@@ -2,6 +2,7 @@ export type {
   Article,
   ArticleStatus,
   ScrapeError,
+  ScrapeLock,
   ScrapeJob,
   ScrapeRun,
   ScrapeRunStatus,
