@@ -1,0 +1,144 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+
+type Source = {
+  id: string;
+  name: string;
+  domain: string;
+  enabled: boolean;
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  failureCount: number;
+};
+
+type Run = {
+  id: string;
+  status: 'running' | 'success' | 'partial' | 'failed';
+  startedAt: string;
+  finishedAt: string | null;
+  recordsDiscovered: number;
+  recordsSaved: number;
+  duplicates: number;
+  errors: number;
+};
+
+type Status = { sources: Source[]; runs: Run[] };
+
+const formatDate = (value: string | null) => value
+  ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  : 'Belum pernah';
+
+const labelStatus = (status: Run['status']) => ({
+  running: 'Sedang berjalan', success: 'Selesai', partial: 'Selesai sebagian', failed: 'Gagal',
+}[status]);
+
+export default function HalamanAdminScraping() {
+  const [status, setStatus] = useState<Status | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/scraping');
+      if (!response.ok) throw new Error();
+      const next: unknown = await response.json();
+      if (!next || typeof next !== 'object' || !Array.isArray((next as Status).sources) || !Array.isArray((next as Status).runs)) throw new Error();
+      setStatus(next as Status);
+      setError(null);
+      return next as Status;
+    } catch {
+      setError('Tidak dapat memuat status pengambilan berita.');
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    // The browser-only initial fetch deliberately transitions the loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load().finally(() => setLoading(false));
+  }, [load]);
+
+  useEffect(() => {
+    if (!polling) return;
+    const timeout = window.setTimeout(() => {
+      void load().then((next) => setPolling(!!next?.runs.some((run) => run.status === 'running')));
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [load, polling]);
+
+  async function runNewsNow() {
+    setStarting(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/scraping', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job: 'news' }),
+      });
+      if (!response.ok) throw new Error();
+      const next = await load();
+      setPolling(!!next?.runs.some((run) => run.status === 'running'));
+    } catch {
+      setError('Tidak dapat memulai pengambilan berita. Coba lagi.');
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  const latestRun = status?.runs[0];
+
+  return (
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-green-900">Pengambilan Berita</h1>
+          <p className="mt-1 text-sm text-gray-500">Pantau sumber dan jalankan pengambilan berita terbaru.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void runNewsNow()}
+          disabled={loading || starting || polling}
+          className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-gray-300"
+        >
+          {starting ? 'Menjalankan…' : polling ? 'Sedang berjalan…' : 'Run News Now'}
+        </button>
+      </div>
+
+      {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
+
+      {loading ? (
+        <p className="rounded-lg border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-600">Memuat status pengambilan berita…</p>
+      ) : status && <>
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-green-900">Status sumber</h2>
+          {status.sources.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {status.sources.map((source) => <article key={source.id} className="rounded-lg border border-gray-200 p-4 text-sm">
+              <h3 className="font-semibold text-gray-900">{source.name}</h3>
+              <p className="mt-1 text-gray-500">{source.domain}</p>
+              <dl className="mt-3 grid gap-1 text-gray-600">
+                <div><dt className="inline">Status: </dt><dd className="inline">{source.enabled ? 'Aktif' : 'Nonaktif'}</dd></div>
+                <div><dt className="inline">Terakhir berhasil: </dt><dd className="inline">{formatDate(source.lastSuccessAt)}</dd></div>
+                <div><dt className="inline">Kegagalan: </dt><dd className="inline">{source.failureCount} kegagalan berturut-turut</dd></div>
+              </dl>
+            </article>)}
+          </div> : <p className="mt-4 text-sm text-gray-500">Belum ada sumber aktif.</p>}
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-green-900">Pengambilan terbaru</h2>
+          {!latestRun ? <p className="mt-4 text-sm text-gray-500">Belum ada riwayat pengambilan berita.</p> : <div className="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
+            <p className="font-semibold text-gray-900">{labelStatus(latestRun.status)}</p>
+            <p className="mt-1 text-gray-500">Dimulai: {formatDate(latestRun.startedAt)}</p>
+            <dl className="mt-4 grid gap-2 sm:grid-cols-4">
+              <div><dt className="text-gray-500">Ditemukan</dt><dd className="font-semibold">Ditemukan: {latestRun.recordsDiscovered}</dd></div>
+              <div><dt className="text-gray-500">Disimpan</dt><dd className="font-semibold">Disimpan: {latestRun.recordsSaved}</dd></div>
+              <div><dt className="text-gray-500">Duplikat</dt><dd className="font-semibold">Duplikat: {latestRun.duplicates}</dd></div>
+              <div><dt className="text-gray-500">Kesalahan</dt><dd className="font-semibold">Kesalahan: {latestRun.errors}</dd></div>
+            </dl>
+          </div>}
+        </section>
+      </>}
+    </main>
+  );
+}
