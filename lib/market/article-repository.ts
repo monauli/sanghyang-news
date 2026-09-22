@@ -1,5 +1,5 @@
 import type { NewArticle } from "./normalize";
-import { dedupeKey } from "./normalize";
+import { dedupeKey, normalizeUrl } from "./normalize";
 
 export type SaveArticleResult = { saved: boolean; duplicate: boolean; articleId: string };
 
@@ -16,7 +16,8 @@ export type ArticleRepositoryClient = {
 export function createArticleRepository(client: ArticleRepositoryClient) {
   return {
     async saveArticle(article: NewArticle): Promise<SaveArticleResult> {
-      const byUrl = await client.article.findUnique({ where: { canonicalUrl: article.canonicalUrl } });
+      const canonicalUrl = normalizeUrl(article.canonicalUrl);
+      const byUrl = await client.article.findUnique({ where: { canonicalUrl } });
       if (byUrl) return { saved: false, duplicate: true, articleId: byUrl.id };
 
       const fingerprint = dedupeKey(article);
@@ -30,7 +31,7 @@ export function createArticleRepository(client: ArticleRepositoryClient) {
       });
       if (byFingerprint) return { saved: false, duplicate: true, articleId: byFingerprint.id };
 
-      const saved = await client.article.create({ data: { ...article, contentHash: fingerprint } });
+      const saved = await client.article.create({ data: { ...article, canonicalUrl, contentHash: fingerprint } });
       return { saved: true, duplicate: false, articleId: saved.id };
     },
   };

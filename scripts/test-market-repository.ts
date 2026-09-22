@@ -74,5 +74,25 @@ assert.deepEqual(await repository.saveArticle({ ...article, canonicalUrl: "https
 assert.equal(articles.length, 1);
 assert.equal(articles[0].title, "Original headline");
 
+const fragmentArticle = {
+  sourceId: "source-2",
+  title: "Original fragment headline",
+  canonicalUrl: "https://example.com/fragment#details",
+  normalizedTitle: "original fragment headline",
+  publishedAt: now,
+  content: "original fragment content",
+};
+assert.deepEqual(await repository.saveArticle(fragmentArticle), { saved: true, duplicate: false, articleId: "article-2" });
+assert.deepEqual(await repository.saveArticle({
+  ...fragmentArticle,
+  title: "Different fragment headline",
+  normalizedTitle: "different fragment headline",
+  canonicalUrl: "https://example.com/fragment",
+  content: "different fragment content",
+}), { saved: false, duplicate: true, articleId: "article-2" });
+assert.equal(articles.length, 2);
+assert.equal(articles[1].title, "Original fragment headline");
+assert.equal(articles[1].content, "original fragment content");
+
 console.log("market repository checks passed");
 })();

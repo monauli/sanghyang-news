@@ -28,3 +28,13 @@ Added the source registry, deterministic article repository, and local determini
 
 - The current schema has no distinct field for a composite dedupe fingerprint. The repository persists the composite fingerprint in the existing unique `Article.contentHash` field; it still derives a stable content-only hash before building that fingerprint.
 - Verification uses an injectable in-memory client because no local PostgreSQL database is configured. A migration/seed run remains outside Task 2 scope.
+
+## Fix round 1
+
+The URL-first lookup used the raw `canonicalUrl`, so fragment variants could bypass URL dedupe and save a second record when their title and content differed. `saveArticle()` now removes fragments with `normalizeUrl()` before both `findUnique` and `create`, while returning the existing first record without updating it.
+
+The repository regression saves `https://example.com/fragment#details`, then saves the fragment-free equivalent with different title/content. Before the fix it failed as expected by creating `article-3`; after the fix it returns `article-2` as a duplicate and preserves the first title/content.
+
+- `npx tsx scripts/test-market-repository.ts` — passed: `market repository checks passed`.
+- `npm run lint` — passed with 0 errors and the same two pre-existing warnings in `scripts/test-kuota.ts` and `spike5.mjs`.
+- `npx tsc --noEmit` — passed with no output.
