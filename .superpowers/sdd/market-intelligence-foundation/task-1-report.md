@@ -35,3 +35,15 @@ Implemented the Prisma persistence foundation without requiring a live database.
 - Prisma CLI validation needs `DATABASE_URL` to be present, while client generation does not; this is why validation used the documented local placeholder.
 - npm reports 6 dependency vulnerabilities (5 high, 1 critical); no audit fix was applied because that would change unrelated dependency versions.
 - Lint retains two pre-existing unused-variable warnings; no unrelated cleanup was made.
+
+## Round 1 reviewer fix
+
+Reviewer finding P1: `scripts/test-db-config.ts` only cleared `DATABASE_URL` and rejected one fixed example URL, so another real or sentinel value could be emitted without failing the test.
+
+Fix: the child process now starts with a unique sentinel `DATABASE_URL`, imports the database boundary, invokes the missing-config path with an empty environment object, and asserts the sentinel appears in neither captured stdout nor stderr while retaining the `DATABASE_URL is required` assertion.
+
+Verification:
+
+- `npx tsx scripts/test-db-config.ts` — passed: `db config check passed without printing DATABASE_URL`.
+- `npm run lint` — passed with 0 errors and the same 2 pre-existing warnings.
+- `npx tsc --noEmit` — passed with no output.
