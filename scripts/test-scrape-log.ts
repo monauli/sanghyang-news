@@ -17,6 +17,7 @@ type Run = {
 const runs: Run[] = [];
 const errors: Array<Record<string, unknown>> = [];
 const sources = new Map([["source-1", { lastRunAt: null as Date | null, lastSuccessAt: null as Date | null, failureCount: 2 }]]);
+const recentRunQueries: Array<{ orderBy: { createdAt: "desc" }; take: number }> = [];
 
 const log = createScrapeLog({
   scrapeRun: {
@@ -31,7 +32,11 @@ const log = createScrapeLog({
       else Object.assign(run, data);
       return run;
     },
-    findMany: async ({ take }: { take: number }) => [...runs].reverse().slice(0, take),
+    findUnique: async ({ where }: { where: { id: string } }) => runs.find((item) => item.id === where.id) ?? null,
+    findMany: async (query: { orderBy: { createdAt: "desc" }; take: number }) => {
+      recentRunQueries.push(query);
+      return [...runs].reverse().slice(0, query.take);
+    },
   },
   scrapeError: {
     create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -53,9 +58,11 @@ const log = createScrapeLog({
   },
   $transaction: async (work: (client: unknown) => Promise<unknown>) => work({
     scrapeRun: {
-      update: async ({ where, data }: { where: { id: string }; data: { errors: { increment: number } } }) => {
+      findUnique: async ({ where }: { where: { id: string } }) => runs.find((item) => item.id === where.id) ?? null,
+      update: async ({ where, data }: { where: { id: string }; data: Partial<Run> | { errors: { increment: number } } }) => {
         const run = runs.find((item) => item.id === where.id)!;
-        run.errors += data.errors.increment;
+        if ("errors" in data && typeof data.errors === "object") run.errors += data.errors.increment;
+        else Object.assign(run, data);
         return run;
       },
     },
@@ -80,7 +87,7 @@ void (async () => {
   const partial = await log.startRun("source-1", "news");
   const error = await log.recordScrapeError({ runId: partial.id, sourceId: "source-1", stage: "extract", message: `  failed\n${"x".repeat(600)}\u0000` });
   assert.equal(partial.errors, 1);
-  const partialCompleted = await log.finishRun(partial.id, { status: "partial", discovered: 4, saved: 3, duplicates: 0, errors: 1 });
+  const partialCompleted = await log.finishRun(partial.id, { status: "partial", discovered: 4, saved: 3, duplicates: 0, errors: 0 });
   assert.deepEqual({ status: partialCompleted.status, saved: partialCompleted.recordsSaved, errors: partialCompleted.errors }, { status: "partial", saved: 3, errors: 1 });
   assert.equal(errors.length, 1);
   assert.equal(error.message.length, 500);
@@ -88,5 +95,11 @@ void (async () => {
   assert.equal(sources.get("source-1")!.failureCount, 1);
 
   assert.deepEqual((await log.listRecentRuns(1)).map((run) => run.id), [partial.id]);
+  assert.deepEqual(recentRunQueries, [{ orderBy: { createdAt: "desc" }, take: 1 }]);
+
+  const failed = await log.startRun("source-1", "news");
+  await log.finishRun(failed.id, { status: "failed", discovered: 0, saved: 0, duplicates: 0, errors: 0 });
+  assert.equal(failed.status, "failed");
+  assert.equal(sources.get("source-1")!.failureCount, 2);
   console.log("scrape log checks passed");
 })();

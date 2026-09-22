@@ -18,16 +18,19 @@ export function createScrapeLog(client: ScrapeLogClient) {
 
     async finishRun(id: string, result: { status: ScrapeRunStatus; discovered: number; saved: number; duplicates: number; errors: number }): Promise<ScrapeRun> {
       const finishedAt = new Date();
-      const run = await client.scrapeRun.update({
-        where: { id },
-        data: {
-          status: result.status,
-          finishedAt,
-          recordsDiscovered: result.discovered,
-          recordsSaved: result.saved,
-          duplicates: result.duplicates,
-          errors: result.errors,
-        },
+      const run = await client.$transaction(async (tx) => {
+        const current = await tx.scrapeRun.findUnique({ where: { id } });
+        return tx.scrapeRun.update({
+          where: { id },
+          data: {
+            status: result.status,
+            finishedAt,
+            recordsDiscovered: result.discovered,
+            recordsSaved: result.saved,
+            duplicates: result.duplicates,
+            errors: Math.max(current?.errors ?? 0, result.errors),
+          },
+        });
       });
       await client.source.update({
         where: { id: run.sourceId },
