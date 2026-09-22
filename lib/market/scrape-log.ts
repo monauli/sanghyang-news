@@ -10,7 +10,7 @@ export function sanitizeScrapeError(message: string): string {
   return message
     .replace(/\r?\n\s*at\s+.*$/gmi, "")
     .replace(/\b(?:postgres(?:ql)?|mysql|mongodb):\/\/\S+/gi, "[database-url-redacted]")
-    .replace(/\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\r\n]+/gi, "$1: [redacted]")
+    .replace(/\b(authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\r\n]+/gi, "$1: [redacted]")
     .replace(/([?&\s](?:api[_-]?key|access[_-]?token|token|password|secret)=)[^&\s]+/gi, "$1[redacted]")
     .replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, ERROR_MESSAGE_MAX_LENGTH);
 }

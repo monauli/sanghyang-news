@@ -157,6 +157,7 @@ void (async () => {
   const detail = await details.GET(new Request("https://example.com/api/admin/scraping/run-1"), { params: Promise.resolve({ runId: "run-1" }) });
   const body = await detail.json();
   for (const secret of ["postgresql://", "password", "secret", "Bearer header", "session=abc"]) assert.ok(!JSON.stringify(body).includes(secret));
+  assert.ok(JSON.stringify(body).includes("Authorization: [redacted]"));
 
   const aggregateDetails = createRunDetailsHandler({
     getRuns: async () => ([
