@@ -92,6 +92,8 @@ void (async () => {
   assert.equal(errors.length, 1);
   assert.equal(error.message.length, 500);
   assert.ok(!/[\r\n\u0000]/.test(error.message));
+  const sensitive = await log.recordScrapeError({ runId: partial.id, sourceId: "source-1", stage: "fetch", message: "postgresql://admin:password@db.example/news?access_token=secret Authorization: Bearer header Cookie: session=abc" });
+  for (const secret of ["postgresql://", "password", "secret", "Bearer header", "session=abc"]) assert.ok(!sensitive.message.includes(secret));
   assert.equal(sources.get("source-1")!.failureCount, 1);
 
   assert.deepEqual((await log.listRecentRuns(1)).map((run) => run.id), [partial.id]);

@@ -23,7 +23,11 @@ const source = (id: string, domain = `${id}.example.com`): Source => ({
   updatedAt: now,
 });
 
-function createRunner(sources: Source[], scrape: (id: string) => Promise<Array<{ title: string; canonicalUrl: string }>>) {
+function createRunner(
+  sources: Source[],
+  scrape: (id: string) => Promise<Array<{ title: string; canonicalUrl: string }>>,
+  { hasRecentRunningRun = async () => false, recordError }: { hasRecentRunningRun?: (sourceId: string) => Promise<boolean>; recordError?: (error: Record<string, unknown>) => Promise<void> } = {},
+) {
   const runs: Array<Record<string, unknown>> = [];
   const errors: Array<Record<string, unknown>> = [];
   const saved: Array<Record<string, unknown>> = [];
@@ -41,6 +45,7 @@ function createRunner(sources: Source[], scrape: (id: string) => Promise<Array<{
     },
     recordScrapeError: async (error) => {
       errors.push(error);
+      await recordError?.(error);
       return error as never;
     },
     saveArticle: async (article) => {
@@ -48,6 +53,7 @@ function createRunner(sources: Source[], scrape: (id: string) => Promise<Array<{
       return { saved: true, duplicate: false, articleId: `article-${saved.length}` };
     },
     scrape: async ({ source: current }) => scrape(current.id),
+    hasRecentRunningRun,
   });
   return { runner, runs, errors, saved };
 }
@@ -102,10 +108,22 @@ void (async () => {
     if (id === "source-1") throw new Error("feed unavailable");
     return [{ title: "Second source", canonicalUrl: "https://example.com/second" }];
   });
-  assert.deepEqual(await partial.runner.runNewsNow(), { runId: "run-1", status: "partial" });
+  assert.deepEqual(await partial.runner.runNewsNow(), { runId: "run-1,run-2", status: "partial" });
   assert.equal(partial.runs[0].status, "failed");
   assert.equal(partial.runs[1].status, "success");
   assert.equal(partial.errors.length, 1);
+
+  const databaseBlocked = createRunner([source("source-1")], async () => [], { hasRecentRunningRun: async () => true });
+  await assert.rejects(() => databaseBlocked.runner.runNewsNow(), NewsRunInProgressError);
+  assert.equal(databaseBlocked.runs.length, 0);
+
+  const finalizesAfterErrorLogFailure = createRunner(
+    [source("source-1")],
+    async () => { throw new Error("source failed"); },
+    { recordError: async () => { throw new Error("log unavailable"); } },
+  );
+  assert.deepEqual(await finalizesAfterErrorLogFailure.runner.runNewsNow(), { runId: "run-1", status: "failed" });
+  assert.equal(finalizesAfterErrorLogFailure.runs[0].status, "failed");
 
   let release!: () => void;
   const blocked = createRunner([source("source-1")], async () => await new Promise((resolve) => { release = () => resolve([{ title: "Blocked", canonicalUrl: "https://example.com/blocked" }]); }));
@@ -134,12 +152,20 @@ void (async () => {
   assert.equal((await busy.POST(new Request("https://example.com/api/admin/scraping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ job: "news" }) }))).status, 409);
 
   const details = createRunDetailsHandler({
-    getRun: async () => ({ ...successful.runs[0], scrapeErrors: [{ id: "error-1", runId: "run-1", sourceId: "source-1", stage: "fetch", message: "GET https://user:password@example.com?api_key=secret", statusCode: null, createdAt: now }] }) as never,
+    getRuns: async () => ([{ ...successful.runs[0], startedAt: now, finishedAt: now, createdAt: now, job: "news", scrapeErrors: [{ id: "error-1", runId: "run-1", sourceId: "source-1", stage: "fetch", message: "postgresql://admin:password@db.example/news?access_token=secret Authorization: Bearer header Cookie: session=abc", statusCode: null, createdAt: now }] }] as never),
   });
   const detail = await details.GET(new Request("https://example.com/api/admin/scraping/run-1"), { params: Promise.resolve({ runId: "run-1" }) });
   const body = await detail.json();
-  assert.ok(!JSON.stringify(body).includes("password"));
-  assert.ok(!JSON.stringify(body).includes("secret"));
+  for (const secret of ["postgresql://", "password", "secret", "Bearer header", "session=abc"]) assert.ok(!JSON.stringify(body).includes(secret));
+
+  const aggregateDetails = createRunDetailsHandler({
+    getRuns: async () => ([
+      { ...partial.runs[0], startedAt: now, finishedAt: now, createdAt: now, job: "news", scrapeErrors: [] },
+      { ...partial.runs[1], startedAt: now, finishedAt: now, createdAt: now, job: "news", scrapeErrors: [] },
+    ] as never),
+  });
+  const aggregate = await aggregateDetails.GET(new Request("https://example.com/api/admin/scraping/run-1,run-2"), { params: Promise.resolve({ runId: "run-1,run-2" }) });
+  assert.equal((await aggregate.json()).run.status, "partial");
 
   await assertUnsupportedMethodReturns405();
   console.log("admin scraping checks passed");

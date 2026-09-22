@@ -7,10 +7,10 @@ import { finishRun, recordScrapeError, startRun } from "./scrape-log";
 import type { ScrapeContext, ScrapeFailure, ScrapedArticle } from "./scraper";
 import { getEnabledSources } from "./source-registry";
 
+const RUNNING_RUN_WINDOW_MS = 15 * 60 * 1000;
+
 export class NewsRunInProgressError extends Error {
-  constructor() {
-    super("A news scrape is already running.");
-  }
+  constructor() { super("A news scrape is already running."); }
 }
 
 export type RunNewsDependencies = {
@@ -20,10 +20,11 @@ export type RunNewsDependencies = {
   recordScrapeError(input: { runId: string; sourceId: string; url?: string; stage: "fetch" | "parse" | "extract" | "persist"; message: string; statusCode?: number }): Promise<unknown>;
   saveArticle(article: NewArticle): Promise<SaveArticleResult>;
   scrape(context: ScrapeContext, onError: (error: ScrapeFailure) => Promise<void>): Promise<ScrapedArticle[]>;
+  hasRecentRunningRun(sourceId: string, since: Date): Promise<boolean>;
+  now?(): Date;
 };
 
 type SourceResult = { runId: string; status: ScrapeRunStatus };
-
 const messageOf = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 function statusFor(errors: number, saved: number, duplicates: number): ScrapeRunStatus {
@@ -38,7 +39,7 @@ function overallStatus(results: SourceResult[]): ScrapeRunStatus {
 }
 
 export function createRunNews(dependencies: RunNewsDependencies) {
-  // ponytail: process-local lock; use a database lease if this runs on multiple server instances.
+  // ponytail: same-process fast path; the durable running-run query covers other instances.
   let running = false;
 
   async function runSource(source: Source): Promise<SourceResult> {
@@ -49,37 +50,34 @@ export function createRunNews(dependencies: RunNewsDependencies) {
     let errors = 0;
     const record = async (input: { stage: "fetch" | "parse" | "extract" | "persist"; message: string; url?: string }) => {
       errors++;
-      await dependencies.recordScrapeError({ runId: run.id, sourceId: source.id, ...input });
+      try { await dependencies.recordScrapeError({ runId: run.id, sourceId: source.id, ...input }); }
+      catch { /* finishRun persists the incremented error count if this insert fails. */ }
     };
 
     try {
-      const articles = await dependencies.scrape({ source, runId: run.id }, async (error) => record(error));
-      discovered = articles.length;
-      for (const article of articles) {
-        try {
-          const result = await dependencies.saveArticle({
-            sourceId: source.id,
-            title: article.title,
-            canonicalUrl: article.canonicalUrl,
-            normalizedTitle: normalizeTitle(article.title),
-            publishedAt: article.publishedAt,
-            description: article.description,
-            content: article.content,
-            imageUrl: article.imageUrl,
-          });
-          saved += Number(result.saved);
-          duplicates += Number(result.duplicate);
-        } catch (error) {
-          await record({ stage: "persist", url: article.canonicalUrl, message: messageOf(error) });
+      try {
+        const articles = await dependencies.scrape({ source, runId: run.id }, record);
+        discovered = articles.length;
+        for (const article of articles) {
+          try {
+            const result = await dependencies.saveArticle({
+              sourceId: source.id, title: article.title, canonicalUrl: article.canonicalUrl,
+              normalizedTitle: normalizeTitle(article.title), publishedAt: article.publishedAt,
+              description: article.description, content: article.content, imageUrl: article.imageUrl,
+            });
+            saved += Number(result.saved);
+            duplicates += Number(result.duplicate);
+          } catch (error) {
+            await record({ stage: "persist", url: article.canonicalUrl, message: messageOf(error) });
+          }
         }
+      } catch (error) {
+        await record({ stage: "fetch", url: source.domain, message: messageOf(error) });
       }
-    } catch (error) {
-      await record({ stage: "fetch", url: source.domain, message: messageOf(error) });
+    } finally {
+      await dependencies.finishRun(run.id, { status: statusFor(errors, saved, duplicates), discovered, saved, duplicates, errors });
     }
-
-    const status = statusFor(errors, saved, duplicates);
-    await dependencies.finishRun(run.id, { status, discovered, saved, duplicates, errors });
-    return { runId: run.id, status };
+    return { runId: run.id, status: statusFor(errors, saved, duplicates) };
   }
 
   return {
@@ -88,17 +86,17 @@ export function createRunNews(dependencies: RunNewsDependencies) {
       running = true;
       try {
         const sources = await dependencies.getEnabledSources();
+        const since = new Date((dependencies.now?.() ?? new Date()).getTime() - RUNNING_RUN_WINDOW_MS);
+        if ((await Promise.all(sources.map((source) => dependencies.hasRecentRunningRun(source.id, since)))).some(Boolean)) {
+          throw new NewsRunInProgressError();
+        }
         const results: SourceResult[] = [];
         for (const source of sources) {
-          try {
-            results.push(await runSource(source));
-          } catch {
-            // A database failure before a run exists cannot be recorded against that run.
-          }
+          results.push(await runSource(source));
         }
         const first = results[0];
         if (!first) throw new Error("No enabled news source could start a scrape run.");
-        return { runId: first.runId, status: overallStatus(results) };
+        return { runId: results.map((result) => result.runId).join(","), status: overallStatus(results) };
       } finally {
         running = false;
       }
@@ -108,13 +106,16 @@ export function createRunNews(dependencies: RunNewsDependencies) {
 
 async function scrape(context: ScrapeContext, onError: (error: ScrapeFailure) => Promise<void>): Promise<ScrapedArticle[]> {
   if (context.source.method === "rss") return createRssScraper().scrape(context);
-  if (context.source.method === "http" || context.source.method === "browser") {
-    return createHttpScraper({ onError }).scrape(context);
-  }
+  if (context.source.method === "http" || context.source.method === "browser") return createHttpScraper({ onError }).scrape(context);
   throw new Error(`Unsupported scrape method: ${context.source.method}`);
 }
 
-const runner = createRunNews({ getEnabledSources: () => getEnabledSources("news"), startRun, finishRun, recordScrapeError, saveArticle, scrape });
+async function hasRecentRunningRun(sourceId: string, since: Date): Promise<boolean> {
+  const { db } = await import("../db");
+  return !!await db.scrapeRun.findFirst({ where: { sourceId, job: "news", status: "running", startedAt: { gte: since } } });
+}
+
+const runner = createRunNews({ getEnabledSources: () => getEnabledSources("news"), startRun, finishRun, recordScrapeError, saveArticle, scrape, hasRecentRunningRun });
 
 export function runNewsNow(): Promise<{ runId: string; status: ScrapeRunStatus }> {
   return runner.runNewsNow();
