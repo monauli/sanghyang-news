@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SourceCategory {
+  news
+  fnb
+  event
+  competitor
+  review
+}
+
+enum ScrapeMethod {
+  rss
+  http
+  browser
+  manual
+}
+
+enum ArticleStatus {
+  discovered
+  extracted
+  failed
+  duplicate
+}
+
+enum ScrapeJob {
+  news
+}
+
+enum ScrapeRunStatus {
+  running
+  success
+  partial
+  failed
+}
+
+enum ScrapeStage {
+  fetch
+  parse
+  extract
+  persist
+}
+
+model Source {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String
+  domain          String
+  category        SourceCategory
+  method          ScrapeMethod
+  enabled         Boolean        @default(true)
+  priority        Int            @default(0)
+  intervalMinutes Int?
+  lastRunAt       DateTime?
+  lastSuccessAt   DateTime?
+  failureCount    Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  articles        Article[]
+  scrapeRuns      ScrapeRun[]
+  scrapeErrors    ScrapeError[]
+
+  @@unique([domain, method])
+  @@index([category, enabled])
+  @@index([enabled, priority])
+}
+
+model Article {
+  id              String        @id @default(uuid()) @db.Uuid
+  sourceId        String        @db.Uuid
+  title           String
+  canonicalUrl    String?       @unique
+  normalizedTitle String
+  publishedAt     DateTime?
+  description     String?
+  content         String?
+  imageUrl        String?
+  contentHash     String?       @unique
+  status          ArticleStatus @default(discovered)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  source          Source        @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([sourceId, normalizedTitle, publishedAt])
+  @@index([sourceId, contentHash])
+  @@index([status, createdAt])
+}
+
+model ScrapeRun {
+  id                String         @id @default(uuid()) @db.Uuid
+  sourceId          String         @db.Uuid
+  job               ScrapeJob
+  status            ScrapeRunStatus @default(running)
+  startedAt         DateTime        @default(now())
+  finishedAt        DateTime?
+  recordsDiscovered Int             @default(0)
+  recordsSaved      Int             @default(0)
+  duplicates        Int             @default(0)
+  errors            Int             @default(0)
+  createdAt         DateTime        @default(now())
+  source            Source          @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  scrapeErrors      ScrapeError[]
+
+  @@index([sourceId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ScrapeError {
+  id         String      @id @default(uuid()) @db.Uuid
+  runId      String      @db.Uuid
+  sourceId   String      @db.Uuid
+  url        String?
+  stage      ScrapeStage
+  message    String
+  statusCode Int?
+  createdAt  DateTime    @default(now())
+  run        ScrapeRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  source     Source      @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([runId, createdAt])
+  @@index([sourceId, createdAt])
+}
