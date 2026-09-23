@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: "Belum masuk." }, { status: 401 });
   const id = new URL(request.url).searchParams.get("competitorId");
   const type = new URL(request.url).searchParams.get("type");
-  return NextResponse.json(id ? type === "promotion" ? await competitorRepository.listPromotions(id) : await competitorRepository.listPriceSnapshots(id) : await competitorRepository.listCompetitors());
+  return NextResponse.json(id ? type === "promotion" ? await competitorRepository.listPromotions(id) : type === "review" ? await competitorRepository.listReviews(id) : await competitorRepository.listPriceSnapshots(id) : await competitorRepository.listCompetitors());
 }
 
 export async function POST(request: Request) {
@@ -43,6 +43,16 @@ export async function POST(request: Request) {
     const competitor = await competitorRepository.findCompetitor(body.competitorId as string);
     if (!competitor) return NextResponse.json({ error: "competitor not found" }, { status: 404 });
     return NextResponse.json(await competitorRepository.createPromotion({ competitorId: body.competitorId as string, title: body.title.trim(), category: body.category.trim(), description: typeof body.description === "string" ? body.description : null, startsAt: startsAt as Date, endsAt: endsAt as Date | null, price: body.price as number | null, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, source: body.source.trim(), sourceUrl, imageUrl, capturedAt: capturedAt as Date }), { status: 201 });
+  }
+  if (body.type === "review") {
+    const reviewDate = date(body.reviewDate); const capturedAt = date(body.capturedAt); const sourceUrl = url(body.sourceUrl);
+    const sentiments = ["positive", "neutral", "negative"];
+    const themes = ["room", "food", "service", "beach", "cleanliness", "facilities", "family", "value"];
+    const validThemes = Array.isArray(body.themes) && body.themes.length > 0 && body.themes.every((item) => typeof item === "string" && themes.includes(item));
+    if (!uuid(body.competitorId) || typeof body.externalId !== "string" || !body.externalId.trim() || typeof body.source !== "string" || !body.source.trim() || sourceUrl === undefined || typeof body.rating !== "number" || !Number.isFinite(body.rating) || body.rating < 0 || body.rating > 5 || reviewDate == null || capturedAt == null || typeof body.text !== "string" || !body.text.trim() || typeof body.sentiment !== "string" || !sentiments.includes(body.sentiment) || !validThemes) return NextResponse.json({ error: "invalid review" }, { status: 400 });
+    const competitor = await competitorRepository.findCompetitor(body.competitorId as string);
+    if (!competitor) return NextResponse.json({ error: "competitor not found" }, { status: 404 });
+    return NextResponse.json(await competitorRepository.createReview({ competitorId: body.competitorId as string, externalId: body.externalId.trim(), source: body.source.trim(), sourceUrl: sourceUrl as string, rating: body.rating, reviewDate: reviewDate as Date, title: typeof body.title === "string" ? body.title : null, text: body.text.trim(), sentiment: body.sentiment as "positive" | "neutral" | "negative", themes: body.themes as string[], capturedAt: capturedAt as Date }), { status: 201 });
   }
   return NextResponse.json({ error: "type must be competitor or priceSnapshot" }, { status: 400 });
 }

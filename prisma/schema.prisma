@@ -140,6 +140,7 @@ model Competitor {
   updatedAt      DateTime                  @updatedAt
   priceSnapshots CompetitorPriceSnapshot[]
   promotions     CompetitorPromotion[]
+  reviews        CompetitorReview[]
 
   @@index([active, name])
 }
@@ -185,6 +186,33 @@ model CompetitorPromotion {
 
   @@index([competitorId, capturedAt])
   @@index([status, startsAt, endsAt])
+}
+
+enum ReviewSentiment {
+  positive
+  neutral
+  negative
+}
+
+model CompetitorReview {
+  id           String          @id @default(uuid()) @db.Uuid
+  competitorId String          @db.Uuid
+  externalId   String
+  source       String
+  sourceUrl    String
+  rating       Decimal         @db.Decimal(3, 2)
+  reviewDate   DateTime
+  title        String?
+  text         String
+  sentiment    ReviewSentiment
+  themes       String[]
+  capturedAt   DateTime
+  createdAt    DateTime        @default(now())
+  competitor   Competitor      @relation(fields: [competitorId], references: [id], onDelete: Restrict)
+
+  @@unique([competitorId, source, externalId])
+  @@index([competitorId, reviewDate])
+  @@index([sentiment, reviewDate])
 }
 
 model ScrapeRun {

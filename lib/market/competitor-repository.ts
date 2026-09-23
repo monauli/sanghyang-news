@@ -15,10 +15,16 @@ export type PromotionInput = {
   discount?: number | null; source: string; sourceUrl?: string | null; imageUrl?: string | null;
   capturedAt: Date;
 };
+export type ReviewInput = {
+  competitorId: string; externalId: string; source: string; sourceUrl: string; rating: number;
+  reviewDate: Date; title?: string | null; text: string; sentiment: "positive" | "neutral" | "negative";
+  themes: string[]; capturedAt: Date;
+};
 export type CompetitorRepositoryClient = {
   competitor: { create(args: { data: unknown }): Promise<unknown>; findMany(args: { where?: Record<string, unknown>; orderBy: Record<string, string> }): Promise<unknown[]>; findUnique(args: { where: Record<string, unknown> }): Promise<unknown | null>; update(args: { where: Record<string, unknown>; data: unknown }): Promise<unknown>; };
   competitorPriceSnapshot: { create(args: { data: unknown }): Promise<unknown>; findMany(args: { where?: Record<string, unknown>; orderBy: Record<string, string> }): Promise<unknown[]>; };
   competitorPromotion: { create(args: { data: unknown }): Promise<unknown>; findMany(args: { where?: Record<string, unknown>; orderBy: Record<string, string> }): Promise<unknown[]>; };
+  competitorReview?: { create(args: { data: unknown }): Promise<unknown>; findMany(args: { where?: Record<string, unknown>; orderBy: Record<string, string> }): Promise<unknown[]>; };
 };
 
 export function createCompetitorRepository(client: CompetitorRepositoryClient) {
@@ -48,6 +54,8 @@ export function createCompetitorRepository(client: CompetitorRepositoryClient) {
       return client.competitorPromotion.create({ data: { ...data, status: expired ? "expired" : changed ? "changed" : "new" } });
     },
     listPromotions(competitorId: string) { return client.competitorPromotion.findMany({ where: { competitorId }, orderBy: { capturedAt: "desc" } }); },
+    createReview(data: ReviewInput) { return client.competitorReview!.create({ data }); },
+    listReviews(competitorId: string) { return client.competitorReview!.findMany({ where: { competitorId }, orderBy: { reviewDate: "desc" } }); },
   };
 }
 
