@@ -47,17 +47,28 @@ export function createAdminScrapingHandlers({
   runNewsNow: start = runNewsNow,
   getEnabledSources: sources = () => getEnabledSources("news"),
   listRecentRuns: runs = () => listRecentRuns(20),
+  ensureNewsSource = async () => {
+    const { db } = await import("@/lib/db");
+    await db.source.upsert({
+      where: { domain_method: { domain: "news.google.com", method: "rss" } },
+      update: { enabled: true, name: "Google News" },
+      create: { name: "Google News", domain: "news.google.com", category: "news", method: "rss", enabled: true },
+    });
+  },
 }: {
   runNewsNow?: RunNewsNow;
   getEnabledSources?: () => Promise<Source[]>;
   listRecentRuns?: () => Promise<ScrapeRun[]>;
+  ensureNewsSource?: () => Promise<void>;
 } = {}) {
   return {
     async GET() {
+      await ensureNewsSource();
       return Response.json({ sources: (await sources()).map(publicSource), runs: (await runs()).map(publicRun) });
     },
 
     async POST(request: Request) {
+      await ensureNewsSource();
       const body: unknown = await request.json().catch(() => undefined);
       if (!body || typeof body !== "object" || (body as { job?: unknown }).job !== "news") {
         return Response.json({ error: "Body must be { job: 'news' }." }, { status: 400 });
