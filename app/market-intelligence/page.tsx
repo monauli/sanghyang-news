@@ -220,15 +220,22 @@ export default function MarketIntelligencePage() {
         )}
         <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_370px]">
           <div className="rounded-lg border bg-white p-5">
-            <h2 className="text-xl font-semibold">Market Activity Trends</h2>
+            <h2 className="text-xl font-semibold">Aktivitas pasar dari waktu ke waktu</h2>
+            <p className="mt-1 text-sm text-[#66758a]">Jumlah berita, mention, promo, review, dan pembaruan kompetitor dalam periode yang dipilih.</p>
             {loading ? (
               <p className="py-20 text-center">Loading trends…</p>
             ) : (
-              <Chart series={data?.trend ?? {}} />
+              <>
+                <Chart series={data?.trend ?? {}} />
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#66758a]">
+                  {[["#118a8c", "F&B"], ["#172b4d", "Events"], ["#8a5a9c", "Entertainment"], ["#ccb89e", "Kompetitor"], ["#ef6658", "Promosi"], ["#78b1e2", "Review"]].map(([color, label]) => <span key={label} className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />{label}</span>)}
+                </div>
+              </>
             )}
           </div>
           <div className="rounded-lg border bg-white p-5">
             <h2 className="text-xl font-semibold">Key Insights</h2>
+            <p className="mt-1 text-sm text-[#66758a]">Ringkasan jumlah temuan pada periode yang dipilih.</p>
             {loading ? (
               <p className="py-8">Loading insights…</p>
             ) : (
@@ -251,7 +258,8 @@ export default function MarketIntelligencePage() {
           </div>
         </section>
         <section className="mt-4 rounded-lg border bg-white p-5">
-          <h2 className="text-xl font-semibold">Recent intelligence</h2>
+          <h2 className="text-xl font-semibold">Data pembanding terbaru</h2>
+          <p className="mt-1 text-sm text-[#66758a]">Perbandingan Sanghyang dengan resort dan hotel di kawasan Anyer–Carita–Cilegon berdasarkan sumber publik.</p>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[#f4f7fa]">
