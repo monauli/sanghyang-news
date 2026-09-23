@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if (!uuid(body.competitorId) || typeof body.roomPackage !== "string" || !body.roomPackage.trim() || typeof body.source !== "string" || !body.source.trim() || typeof body.price !== "number" || body.price < 0 || checkIn === undefined || checkOut === undefined || observedAt === undefined) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
     const sourceUrl = url(body.sourceUrl);
     if (sourceUrl === undefined || (body.originalPrice !== undefined && (typeof body.originalPrice !== "number" || body.originalPrice < 0)) || (body.discount !== undefined && (typeof body.discount !== "number" || body.discount < 0 || body.discount > 100))) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
-    return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId, roomPackage: body.roomPackage, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt ?? undefined }), { status: 201 });
+    return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId as string, roomPackage: body.roomPackage, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt ?? undefined }), { status: 201 });
   }
   return NextResponse.json({ error: "type must be competitor or priceSnapshot" }, { status: 400 });
 }
