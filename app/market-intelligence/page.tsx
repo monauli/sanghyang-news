@@ -9,7 +9,9 @@ type Summary = {
     date: string;
     category: string;
     source: string;
+    sourceUrl?: string;
     headline: string;
+    relevance?: string;
     sentiment: string;
   }[];
   trend: Record<string, number[]>;
@@ -264,7 +266,7 @@ export default function MarketIntelligencePage() {
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[#f4f7fa]">
                 <tr>
-                  {["Date", "Category", "Source", "Headline", "Sentiment"].map(
+                  {["Date", "Category", "Source", "Headline", "Pembanding untuk Sanghyang", "Sentiment"].map(
                     (h) => (
                       <th key={h} className="px-3 py-3">
                         {h}
@@ -276,7 +278,7 @@ export default function MarketIntelligencePage() {
               <tbody className="divide-y">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-10 text-center">
+                    <td colSpan={6} className="px-3 py-10 text-center">
                       Loading intelligence…
                     </td>
                   </tr>
@@ -286,15 +288,16 @@ export default function MarketIntelligencePage() {
                       <td className="px-3 py-3">{fmt(r.date)}</td>
                       <td className="px-3 py-3">{r.category}</td>
                       <td className="px-3 py-3">{r.source}</td>
-                      <td className="max-w-[360px] truncate px-3 py-3">
-                        {r.headline}
+                      <td className="max-w-[360px] px-3 py-3">
+                        {r.sourceUrl ? <a className="font-medium text-[#1b6c68] underline decoration-[#b7ff67] underline-offset-2" href={r.sourceUrl} target="_blank" rel="noreferrer">{r.headline}</a> : r.headline}
                       </td>
+                      <td className="max-w-[360px] px-3 py-3 text-[#66758a]">{r.relevance ?? "—"}</td>
                       <td className="px-3 py-3 capitalize">{r.sentiment}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-3 py-10 text-center">
+                    <td colSpan={6} className="px-3 py-10 text-center">
                       No intelligence found for this view.
                     </td>
                   </tr>

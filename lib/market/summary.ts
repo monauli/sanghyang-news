@@ -1,5 +1,5 @@
 export type SummaryPeriod = '30d' | '90d' | 'year';
-export type SummaryRow = { date: string; category: string; source: string; headline: string; sentiment: 'positive' | 'neutral' | 'negative'; reviewDate?: string };
+export type SummaryRow = { date: string; category: string; source: string; sourceUrl?: string; headline: string; relevance?: string; sentiment: 'positive' | 'neutral' | 'negative'; reviewDate?: string };
 export type SummaryInput = { rows: SummaryRow[]; competitors: number; marketItems: number; period: SummaryPeriod; now?: Date };
 
 export function transformMarketSummary(input: SummaryInput) {
