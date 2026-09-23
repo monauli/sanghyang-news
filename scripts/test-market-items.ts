@@ -4,7 +4,7 @@ import { createMarketItemRepository } from "../lib/market/market-item-repository
 async function main() {
 const saved: Record<string, unknown>[] = [];
 const repo = createMarketItemRepository({ marketItem: {
-  upsert: async ({ create }) => { saved.push(create); return create; },
+  upsert: async ({ create }) => { saved.push(create as Record<string, unknown>); return create; },
   findMany: async ({ where }) => saved.filter((item) => Object.entries(where ?? {}).every(([key, value]) => item[key] === value)),
 } });
 await repo.save({ articleId: "article-1", kind: "event", location: "Anyer", tags: ["family"] });
