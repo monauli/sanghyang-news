@@ -21,6 +21,11 @@ const invalidDate = await POST(new Request("https://example.com/api/market-intel
   method: "POST", headers: { cookie }, body: JSON.stringify({ articleId: "00000000-0000-0000-0000-000000000000", kind: "event", startsAt: "tomorrow" }),
 }));
 assert.equal(invalidDate.status, 400);
+
+const localeDate = await POST(new Request("https://example.com/api/market-intelligence", {
+  method: "POST", headers: { cookie }, body: JSON.stringify({ articleId: "00000000-0000-0000-0000-000000000000", kind: "event", startsAt: "01/02/2026" }),
+}));
+assert.equal(localeDate.status, 400);
 console.log("market item route checks passed");
 }
 void main();

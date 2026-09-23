@@ -5,6 +5,7 @@ import type { MarketItemKind } from "@/lib/db-types";
 import { NAMA_COOKIE, tokenSah } from "@/lib/sandi";
 
 const kinds = new Set(["fnb", "event", "destination"]);
+const isoDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (typeof body.articleId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.articleId) || typeof body.kind !== "string" || !kinds.has(body.kind)) {
     return NextResponse.json({ error: "articleId and valid kind are required" }, { status: 400 });
   }
-  const parseDate = (value: unknown) => value == null ? null : typeof value === "string" && !Number.isNaN(Date.parse(value)) ? new Date(value) : undefined;
+  const parseDate = (value: unknown) => value == null ? null : typeof value === "string" && isoDateTime.test(value) && !Number.isNaN(Date.parse(value)) ? new Date(value) : undefined;
   const startsAt = parseDate(body.startsAt);
   const endsAt = parseDate(body.endsAt);
   if (startsAt === undefined || endsAt === undefined) return NextResponse.json({ error: "startsAt and endsAt must be ISO dates" }, { status: 400 });
