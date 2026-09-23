@@ -15,7 +15,7 @@ export type MarketItemInput = {
 
 export type MarketItemRepositoryClient = {
   marketItem: {
-    upsert(args: { where: { articleId: string }; create: any; update: any }): Promise<unknown>;
+    upsert(args: { where: { articleId: string }; create: unknown; update: unknown }): Promise<unknown>;
     findMany(args: { where?: Record<string, unknown>; orderBy: Record<string, string> }): Promise<unknown[]>;
   };
 };
