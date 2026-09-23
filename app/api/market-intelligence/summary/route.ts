@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     ...items.map((x) => ({ date: x.createdAt.toISOString(), category: x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : 'Destinations', source: 'Market news', headline: x.description ?? x.targetAudience ?? 'New market intelligence item', sentiment: 'positive' as const })),
     ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, headline: `${x.roomName ?? x.packageName ?? 'Rate'} observed at ${x.price}`, sentiment: 'neutral' as const })),
     ...promotions.map((x) => ({ date: x.capturedAt.toISOString(), category: 'Promotions', source: x.source, headline: x.title, sentiment: 'neutral' as const })),
-    ...reviews.map((x) => ({ date: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, headline: x.text, sentiment: x.sentiment as SummaryRow['sentiment'] })),
+    ...reviews.map((x) => ({ date: x.capturedAt.toISOString(), reviewDate: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, headline: x.text, sentiment: x.sentiment as SummaryRow['sentiment'] })),
   ].filter((row) => !source || row.source === source).filter((row) => segment === 'all' || ({ fnb: 'F&B', event: 'Events', destination: 'Destinations', competitor: 'Competitors', promotion: 'Promotions', review: 'Reviews' } as Record<string, string>)[segment] === row.category);
   return NextResponse.json(transformMarketSummary({ rows, competitors: competitors.length, marketItems: items.length, period }));
 }

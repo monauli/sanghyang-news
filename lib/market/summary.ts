@@ -1,5 +1,5 @@
 export type SummaryPeriod = '30d' | '90d' | 'year';
-export type SummaryRow = { date: string; category: string; source: string; headline: string; sentiment: 'positive' | 'neutral' | 'negative' };
+export type SummaryRow = { date: string; category: string; source: string; headline: string; sentiment: 'positive' | 'neutral' | 'negative'; reviewDate?: string };
 export type SummaryInput = { rows: SummaryRow[]; competitors: number; marketItems: number; period: SummaryPeriod; now?: Date };
 
 export function transformMarketSummary(input: SummaryInput) {
@@ -11,5 +11,6 @@ export function transformMarketSummary(input: SummaryInput) {
   const trend: Record<string, number[]> = { fnb: Array(bucketCount).fill(0), event: Array(bucketCount).fill(0), competitors: Array(bucketCount).fill(0), promotions: Array(bucketCount).fill(0), reviews: Array(bucketCount).fill(0), destinations: Array(bucketCount).fill(0) };
   const key = (category: string) => ({ 'F&B': 'fnb', Events: 'event', Competitors: 'competitors', Promotions: 'promotions', Reviews: 'reviews', Destinations: 'destinations' } as Record<string, string>)[category];
   for (const row of rows) { const bucket = Math.min(bucketCount - 1, Math.floor(((now.getTime() - Date.parse(row.date)) / span) * bucketCount)); const series = key(row.category); if (series) trend[series][bucket]++; }
-  return { counts: { marketItems: input.marketItems, competitors: input.competitors, fnb: rows.filter((r) => r.category === 'F&B').length, events: rows.filter((r) => r.category === 'Events').length, destinations: rows.filter((r) => r.category === 'Destinations').length, priceChanges: rows.filter((r) => r.category === 'Competitors').length, promotions: rows.filter((r) => r.category === 'Promotions').length, reviews: rows.filter((r) => r.category === 'Reviews').length }, sourceNames: [...new Set(rows.map((r) => r.source))].sort(), recentRows: rows.slice(0, 50), trend };
+  const marketItems = rows.filter((r) => ['F&B', 'Events', 'Destinations'].includes(r.category)).length;
+  return { counts: { marketItems, competitors: input.competitors, fnb: rows.filter((r) => r.category === 'F&B').length, events: rows.filter((r) => r.category === 'Events').length, destinations: rows.filter((r) => r.category === 'Destinations').length, priceChanges: rows.filter((r) => r.category === 'Competitors').length, promotions: rows.filter((r) => r.category === 'Promotions').length, reviews: rows.filter((r) => r.category === 'Reviews').length }, sourceNames: [...new Set(rows.map((r) => r.source))].sort(), recentRows: rows.slice(0, 50), trend };
 }
