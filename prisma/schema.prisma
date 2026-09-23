@@ -287,4 +287,5 @@ model ScrapeError {
 model ScrapeLock {
   job        ScrapeJob @id
   acquiredAt DateTime  @default(now())
+  ownerToken String
 }

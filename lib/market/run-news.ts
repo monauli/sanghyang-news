@@ -6,6 +6,7 @@ import { createRssScraper } from "./rss-scraper";
 import { finishRun, recordScrapeError, startRun } from "./scrape-log";
 import type { ScrapeContext, ScrapeFailure, ScrapedArticle } from "./scraper";
 import { getEnabledSources } from "./source-registry";
+import { randomUUID } from "node:crypto";
 
 export class NewsRunInProgressError extends Error {
   constructor() { super("A news scrape is already running."); }
@@ -18,8 +19,8 @@ export type RunNewsDependencies = {
   recordScrapeError(input: { runId: string; sourceId: string; url?: string; stage: "fetch" | "parse" | "extract" | "persist"; message: string; statusCode?: number }): Promise<unknown>;
   saveArticle(article: NewArticle): Promise<SaveArticleResult>;
   scrape(context: ScrapeContext, onError: (error: ScrapeFailure) => Promise<void>): Promise<ScrapedArticle[]>;
-  claimNewsRun(): Promise<boolean>;
-  releaseNewsRun(): Promise<void>;
+  claimNewsRun(): Promise<string | null>;
+  releaseNewsRun(ownerToken: string): Promise<void>;
 };
 
 type SourceResult = { runId: string; status: ScrapeRunStatus };
@@ -85,10 +86,10 @@ export function createRunNews(dependencies: RunNewsDependencies) {
     async runNewsNow(): Promise<{ runId: string; status: ScrapeRunStatus }> {
       if (running) throw new NewsRunInProgressError();
       running = true;
-      let claimed = false;
+      let ownerToken: string | null = null;
       try {
-        if (!await dependencies.claimNewsRun()) throw new NewsRunInProgressError();
-        claimed = true;
+        ownerToken = await dependencies.claimNewsRun();
+        if (!ownerToken) throw new NewsRunInProgressError();
         const results: SourceResult[] = [];
         for (const source of await dependencies.getEnabledSources()) {
           try { results.push(await runSource(source)); }
@@ -98,7 +99,7 @@ export function createRunNews(dependencies: RunNewsDependencies) {
         if (!first) throw new Error("No enabled news source could start a scrape run.");
         return { runId: results.map((item) => item.runId).join(","), status: overallStatus(results) };
       } finally {
-        try { if (claimed) await dependencies.releaseNewsRun(); }
+        try { if (ownerToken) await dependencies.releaseNewsRun(ownerToken); }
         finally { running = false; }
       }
     },
@@ -115,36 +116,44 @@ export const NEWS_SCRAPE_LEASE_MS = 10 * 60 * 1000;
 
 type ScrapeLockClient = {
   scrapeLock: {
-    create(args: { data: { job: "news" } }): Promise<unknown>;
-    updateMany(args: { where: { job: "news"; acquiredAt: { lt: Date } }; data: { acquiredAt: Date } }): Promise<{ count: number }>;
+    create(args: { data: { job: "news"; ownerToken: string } }): Promise<unknown>;
+    updateMany(args: { where: { job: "news"; acquiredAt: { lt: Date } }; data: { acquiredAt: Date; ownerToken: string } }): Promise<{ count: number }>;
+    deleteMany(args: { where: { job: "news"; ownerToken: string } }): Promise<unknown>;
   };
 };
 
 export function createNewsLockClaimer(client: ScrapeLockClient, now = () => new Date()) {
-  return async function claimNewsRun(): Promise<boolean> {
+  return async function claimNewsRun(): Promise<string | null> {
     const current = now();
+    const ownerToken = randomUUID();
     try {
-      await client.scrapeLock.create({ data: { job: "news" } });
-      return true;
+      await client.scrapeLock.create({ data: { job: "news", ownerToken } });
+      return ownerToken;
     } catch (error) {
       if ((error as { code?: string }).code !== "P2002") throw error;
       const reclaimed = await client.scrapeLock.updateMany({
         where: { job: "news", acquiredAt: { lt: new Date(current.getTime() - NEWS_SCRAPE_LEASE_MS) } },
-        data: { acquiredAt: current },
+        data: { acquiredAt: current, ownerToken },
       });
-      return reclaimed.count === 1;
+      return reclaimed.count === 1 ? ownerToken : null;
     }
   };
 }
 
-async function claimNewsRun(): Promise<boolean> {
+export function createNewsLockReleaser(client: Pick<ScrapeLockClient, "scrapeLock">) {
+  return async function releaseNewsRun(ownerToken: string): Promise<void> {
+    await client.scrapeLock.deleteMany({ where: { job: "news", ownerToken } });
+  };
+}
+
+async function claimNewsRun(): Promise<string | null> {
   const { db } = await import("../db");
   return createNewsLockClaimer(db)();
 }
 
-async function releaseNewsRun(): Promise<void> {
+async function releaseNewsRun(ownerToken: string): Promise<void> {
   const { db } = await import("../db");
-  await db.scrapeLock.delete({ where: { job: "news" } });
+  await createNewsLockReleaser(db)(ownerToken);
 }
 
 const runner = createRunNews({ getEnabledSources: () => getEnabledSources("news"), startRun, finishRun, recordScrapeError, saveArticle, scrape, claimNewsRun, releaseNewsRun });

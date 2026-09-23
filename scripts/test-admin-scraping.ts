@@ -26,13 +26,13 @@ const source = (id: string, domain = `${id}.example.com`): Source => ({
 function createRunner(
   sources: Source[],
   scrape: (id: string) => Promise<Array<{ title: string; canonicalUrl: string }>>,
-  { hasRecentRunningRun = async () => false, recordError, startError, finishError, claimNewsRun = async () => true, releaseNewsRun = async () => undefined }: {
+    { hasRecentRunningRun = async () => false, recordError, startError, finishError, claimNewsRun = async () => "test-owner", releaseNewsRun = async () => undefined }: {
     hasRecentRunningRun?: (sourceId: string) => Promise<boolean>;
     recordError?: (error: Record<string, unknown>) => Promise<void>;
     startError?: (sourceId: string) => Promise<void>;
     finishError?: (runId: string) => Promise<void>;
-    claimNewsRun?: () => Promise<boolean>;
-    releaseNewsRun?: () => Promise<void>;
+    claimNewsRun?: () => Promise<string | null>;
+    releaseNewsRun?: (ownerToken: string) => Promise<void>;
   } = {},
 ) {
   const runs: Array<Record<string, unknown>> = [];
@@ -125,18 +125,18 @@ void (async () => {
   assert.equal(partial.runs[1].status, "success");
   assert.equal(partial.errors.length, 1);
 
-  const databaseBlocked = createRunner([source("source-1")], async () => [], { claimNewsRun: async () => false });
+  const databaseBlocked = createRunner([source("source-1")], async () => [], { claimNewsRun: async () => null });
   await assert.rejects(() => databaseBlocked.runner.runNewsNow(), NewsRunInProgressError);
   assert.equal(databaseBlocked.runs.length, 0);
 
   let claimed = false;
   let releaseClaim!: () => void;
   const claimNewsRun = async () => {
-    if (claimed) return false;
+    if (claimed) return null;
     claimed = true;
-    return true;
+    return "test-owner";
   };
-  const releaseNewsRun = async () => { claimed = false; };
+  const releaseNewsRun = async (_ownerToken: string) => { claimed = false; };
   const firstInstance = createRunner([source("source-1")], async () => await new Promise((resolve) => { releaseClaim = () => resolve([{ title: "Claimed", canonicalUrl: "https://example.com/claimed" }]); }), { claimNewsRun, releaseNewsRun });
   const secondInstance = createRunner([source("source-1")], async () => [], { claimNewsRun, releaseNewsRun });
   const claimedRun = firstInstance.runner.runNewsNow();

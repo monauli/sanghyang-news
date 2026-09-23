@@ -46,4 +46,8 @@ assert.match(activeFingerprintSql, /PARTITION BY "fingerprint" ORDER BY "generat
 assert.match(activeFingerprintSql, /CASE WHEN ranked\.row_number = 1 THEN ranked\."fingerprint" ELSE NULL END/);
 assert.match(activeFingerprintSql, /WHERE "activeFingerprint" IS NOT NULL AND "status" = 'active'/);
 
+const lockOwnerSql = readFileSync("prisma/migrations/20260923080000_scrape_lock_owner_token/migration.sql", "utf8");
+assert.match(lockOwnerSql, /ALTER TABLE "ScrapeLock" ADD COLUMN "ownerToken" TEXT/);
+assert.match(lockOwnerSql, /ALTER COLUMN "ownerToken" SET NOT NULL/);
+
 console.log("initial Prisma migration check passed");
