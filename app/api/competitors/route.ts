@@ -14,7 +14,8 @@ const date = (value: unknown) => value == null ? null : typeof value === "string
 export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: "Belum masuk." }, { status: 401 });
   const id = new URL(request.url).searchParams.get("competitorId");
-  return NextResponse.json(id ? await competitorRepository.listPriceSnapshots(id) : await competitorRepository.listCompetitors());
+  const type = new URL(request.url).searchParams.get("type");
+  return NextResponse.json(id ? type === "promotion" ? await competitorRepository.listPromotions(id) : await competitorRepository.listPriceSnapshots(id) : await competitorRepository.listCompetitors());
 }
 
 export async function POST(request: Request) {
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
     const sourceUrl = url(body.sourceUrl);
     if (sourceUrl === undefined || (body.originalPrice !== undefined && (typeof body.originalPrice !== "number" || !Number.isFinite(body.originalPrice) || body.originalPrice < 0)) || (body.discount !== undefined && (typeof body.discount !== "number" || !Number.isFinite(body.discount) || body.discount < 0 || body.discount > 100))) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
     return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId as string, roomName: body.roomName as string | null, packageName: body.packageName as string | null, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt as Date }), { status: 201 });
+  }
+  if (body.type === "promotion") {
+    const startsAt = date(body.startsAt); const endsAt = date(body.endsAt); const capturedAt = date(body.capturedAt);
+    const sourceUrl = url(body.sourceUrl); const imageUrl = url(body.imageUrl);
+    const validNumber = (value: unknown) => value === undefined || value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+    if (!uuid(body.competitorId) || typeof body.title !== "string" || !body.title.trim() || typeof body.category !== "string" || !body.category.trim() || typeof body.source !== "string" || !body.source.trim() || !["new", "changed", "expired"].includes(body.status as string) || startsAt == null || capturedAt == null || endsAt == null || sourceUrl === undefined || imageUrl === undefined || !validNumber(body.price) || !validNumber(body.originalPrice) || !validNumber(body.discount) || (typeof body.discount === "number" && body.discount > 100)) return NextResponse.json({ error: "invalid promotion" }, { status: 400 });
+    return NextResponse.json(await competitorRepository.createPromotion({ competitorId: body.competitorId as string, title: body.title.trim(), category: body.category.trim(), description: typeof body.description === "string" ? body.description : null, startsAt: startsAt as Date, endsAt: endsAt as Date, price: body.price as number | null, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, source: body.source.trim(), sourceUrl, imageUrl, capturedAt: capturedAt as Date, status: body.status as "new" | "changed" | "expired" }), { status: 201 });
   }
   return NextResponse.json({ error: "type must be competitor or priceSnapshot" }, { status: 400 });
 }

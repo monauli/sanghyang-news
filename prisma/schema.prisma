@@ -53,6 +53,12 @@ enum ScrapeStage {
   persist
 }
 
+enum PromotionStatus {
+  new
+  changed
+  expired
+}
+
 model Source {
   id              String         @id @default(uuid()) @db.Uuid
   name            String
@@ -133,6 +139,7 @@ model Competitor {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   priceSnapshots CompetitorPriceSnapshot[]
+  promotions    CompetitorPromotion[]
 
   @@index([active, name])
 }
@@ -155,6 +162,29 @@ model CompetitorPriceSnapshot {
 
   @@index([competitorId, observedAt])
   @@index([source, observedAt])
+}
+
+model CompetitorPromotion {
+  id            String          @id @default(uuid()) @db.Uuid
+  competitorId  String          @db.Uuid
+  title         String
+  category      String
+  description   String?
+  startsAt      DateTime
+  endsAt        DateTime?
+  price         Decimal?        @db.Decimal(12, 2)
+  originalPrice Decimal?        @db.Decimal(12, 2)
+  discount      Decimal?        @db.Decimal(5, 2)
+  source        String
+  sourceUrl     String?
+  imageUrl      String?
+  capturedAt    DateTime
+  status        PromotionStatus
+  createdAt     DateTime        @default(now())
+  competitor    Competitor      @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId, capturedAt])
+  @@index([status, startsAt, endsAt])
 }
 
 model ScrapeRun {

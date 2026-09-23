@@ -17,6 +17,10 @@ async function main() {
   assert.equal((await DELETE(new Request("http://localhost/api/competitors?id=not-a-uuid", { method: "DELETE", headers: { cookie } }))).status, 400);
   const unknown = await POST(new Request("http://localhost/api/competitors", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ type: "unknown" }) }));
   assert.equal(unknown.status, 400);
+  const invalidPromotion = await POST(new Request("http://localhost/api/competitors", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ type: "promotion", competitorId: "00000000-0000-0000-0000-000000000000", title: "Sale", category: "room", startsAt: "01/02/2026", endsAt: "2026-09-30T00:00:00Z", capturedAt: "2026-09-23T00:00:00Z", source: "manual", status: "new", price: Number.NaN }) }));
+  assert.equal(invalidPromotion.status, 400);
+  const invalidPromotionUrl = await POST(new Request("http://localhost/api/competitors", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ type: "promotion", competitorId: "00000000-0000-0000-0000-000000000000", title: "Sale", category: "room", startsAt: "2026-09-23T00:00:00Z", endsAt: "2026-09-30T00:00:00Z", capturedAt: "2026-09-23T00:00:00Z", source: "manual", status: "new", sourceUrl: "ftp://bad" }) }));
+  assert.equal(invalidPromotionUrl.status, 400);
   console.log("competitor route checks passed");
 }
 void main();
