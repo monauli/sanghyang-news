@@ -18,6 +18,7 @@ type Summary = {
   }[];
   trend: Record<string, number[]>;
   comparison: { name: string; rating: number; reviewCount: number; difference: number; source: string; sourceUrl?: string }[];
+  priceComparison: { competitor: string; roomName: string | null; currency: string; guests: number; checkIn?: string; checkOut?: string; sanghyangPrice: number; competitorPrice: number; difference: number; source: string; sourceUrl?: string }[];
   sanghyang: { rating: number; reviewCount: number };
 };
 const tabs = [
@@ -266,7 +267,7 @@ export default function MarketIntelligencePage() {
         <section className="mb-4 rounded-lg border bg-white p-5">
           <h2 className="text-xl font-semibold">Perbandingan harga</h2>
           <p className="mt-1 text-sm text-[#66758a]">Harga hanya valid jika dibandingkan pada tanggal menginap, jumlah malam, tipe kamar, jumlah tamu, dan mata uang yang sama.</p>
-          <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Snapshot harga otomatis akan menampilkan: <strong>check-in/check-out · tipe kamar · 2 dewasa · harga per malam · harga total · promo · sumber</strong>. Saat ini belum ada snapshot harga yang seragam, jadi sistem tidak menampilkan angka yang berpotensi menyesatkan.</div>
+          {data?.priceComparison?.length ? <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="bg-[#f4f7fa]"><tr>{["Kompetitor", "Kamar", "Tanggal", "Tamu", "Sanghyang", "Kompetitor", "Selisih"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y">{data.priceComparison.map((x) => <tr key={`${x.competitor}-${x.roomName}-${x.checkIn}`}><td className="px-3 py-3 font-semibold">{x.competitor}</td><td className="px-3 py-3">{x.roomName}</td><td className="px-3 py-3">{x.checkIn ? `${fmt(x.checkIn)} – ${fmt(x.checkOut ?? x.checkIn)}` : "—"}</td><td className="px-3 py-3">{x.guests} dewasa</td><td className="px-3 py-3">{x.currency} {x.sanghyangPrice.toLocaleString("id-ID")}</td><td className="px-3 py-3">{x.currency} {x.competitorPrice.toLocaleString("id-ID")}</td><td className={`px-3 py-3 font-semibold ${x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference > 0 ? "+" : ""}{x.currency} {x.difference.toLocaleString("id-ID")}</td></tr>)}</tbody></table></div> : <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada snapshot harga yang benar-benar sebanding. Sistem akan menampilkan angka setelah tersedia untuk <strong>tanggal, tipe kamar, jumlah tamu, dan mata uang yang sama</strong>.</div>}
         </section>
         {error && (
           <div

@@ -5,7 +5,7 @@ export type CompetitorInput = {
   bookingUrl?: string | null; socialUrl?: string | null; active?: boolean; notes?: string | null;
 };
 export type PriceSnapshotInput = {
-  competitorId: string; roomName?: string | null; packageName?: string | null; price: number; originalPrice?: number | null;
+  competitorId: string; roomName?: string | null; packageName?: string | null; price: number; originalPrice?: number | null; currency?: string; guests?: number;
   discount?: number | null; checkIn?: Date | null; checkOut?: Date | null;
   source: string; sourceUrl?: string | null; observedAt?: Date;
 };

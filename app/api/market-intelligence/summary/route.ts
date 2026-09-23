@@ -11,17 +11,19 @@ export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: 'Belum masuk.' }, { status: 401 });
   const params = new URL(request.url).searchParams; const period = (params.get('period') ?? '30d') as SummaryPeriod; const segment = params.get('segment') ?? 'all'; const source = params.get('source');
   if (!validateSummaryParams(period, segment, source)) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
-  const [items, competitors, prices, promotions, reviews] = await Promise.all([
+  const [items, competitors, prices, sanghyangPrices, promotions, reviews] = await Promise.all([
     db.marketItem.findMany({ include: { article: { select: { title: true, publishedAt: true, canonicalUrl: true } } }, orderBy: { createdAt: 'desc' } }),
     db.competitor.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
     db.competitorPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
+    db.sanghyangPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
     db.competitorPromotion.findMany({ orderBy: { capturedAt: 'desc' } }),
     db.competitorReview.findMany({ orderBy: { reviewDate: 'desc' } }),
   ]);
   const rows: SummaryRow[] = [
     ...competitors.map((x) => ({ date: (x.ratingObservedAt ?? x.updatedAt).toISOString(), category: 'Competitors', source: x.ratingSource ?? 'Competitor registry', sourceUrl: x.ratingSourceUrl ?? undefined, headline: `${x.name} · ${x.location ?? 'Anyer–Carita–Cilegon'}${x.rating == null ? '' : ` · ${Number(x.rating).toFixed(1)}/5 · ${x.reviewCount?.toLocaleString('id-ID') ?? '?'} ulasan`}`, relevance: 'Bandingkan reputasi publik dan posisi Sanghyang terhadap resort sekitar.', sentiment: 'neutral' as const })),
     ...items.map((x) => ({ date: (x.article.publishedAt ?? x.createdAt).toISOString(), category: x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : x.kind === 'entertainment' ? 'Entertainment' : 'Destinations', source: 'Market news', sourceUrl: x.article.canonicalUrl ?? undefined, headline: x.article.title, relevance: x.kind === 'fnb' ? 'Bandingkan konsep kuliner, menu, dan target tamu dengan restoran Sanghyang.' : x.kind === 'event' ? 'Cari peluang event serupa untuk meningkatkan okupansi Sanghyang.' : x.kind === 'entertainment' ? 'Bandingkan hiburan dan aktivitas yang menarik wisatawan.' : 'Bandingkan daya tarik destinasi dan paket pengalaman wisata.', sentiment: 'positive' as const })),
-    ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: `${x.roomName ?? x.packageName ?? 'Rate'} observed at ${x.price}`, relevance: 'Bandingkan harga dan paket dengan penawaran Sanghyang.', sentiment: 'neutral' as const })),
+    ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: `${x.roomName ?? x.packageName ?? 'Rate'} · ${x.price} ${x.currency}`, relevance: 'Bandingkan hanya dengan snapshot Sanghyang yang tanggal, kamar, tamu, dan mata uangnya sama.', sentiment: 'neutral' as const })),
+    ...sanghyangPrices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: `Sanghyang · ${x.roomName} · ${x.price} ${x.currency}`, relevance: 'Baseline harga Sanghyang untuk perbandingan dengan snapshot kompetitor yang setara.', sentiment: 'neutral' as const })),
     ...promotions.map((x) => ({ date: x.capturedAt.toISOString(), category: 'Promotions', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: x.title, relevance: 'Bandingkan mekanisme promo, periode, dan penawarannya dengan Sanghyang.', sentiment: 'neutral' as const })),
     ...reviews.map((x) => ({ date: x.capturedAt.toISOString(), reviewDate: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, sourceUrl: x.sourceUrl, headline: x.text, relevance: 'Gunakan pujian dan keluhan pelanggan sebagai acuan perbaikan layanan Sanghyang.', sentiment: x.sentiment as SummaryRow['sentiment'] })),
   ].filter((row) => !source || row.source === source).filter((row) => segment === 'all' || ({ fnb: 'F&B', event: 'Events', entertainment: 'Entertainment', destination: 'Destinations', competitor: 'Competitors', promotion: 'Promotions', review: 'Reviews' } as Record<string, string>)[segment] === row.category);
@@ -31,7 +33,12 @@ export async function GET(request: Request) {
     .filter((x) => x.rating != null && x.reviewCount != null)
     .map((x) => ({ name: x.name, rating: Number(x.rating), reviewCount: x.reviewCount ?? 0, difference: Number((Number(x.rating) - sanghyangRating).toFixed(1)), source: x.ratingSource ?? 'Public source', sourceUrl: x.ratingSourceUrl ?? undefined }))
     .sort((a, b) => b.reviewCount - a.reviewCount);
-  return NextResponse.json({ ...summary, comparison, sanghyang: { rating: sanghyangRating, reviewCount: 2937 } });
+  const priceRows = prices.flatMap((x) => {
+    const match = sanghyangPrices.find((s) => s.roomName === x.roomName && s.currency === x.currency && s.guests === x.guests && s.checkIn.getTime() === x.checkIn?.getTime() && s.checkOut.getTime() === x.checkOut?.getTime());
+    if (!match) return [];
+    return [{ competitor: competitors.find((c) => c.id === x.competitorId)?.name ?? 'Kompetitor', roomName: x.roomName ?? x.packageName ?? 'Paket', currency: x.currency, guests: x.guests, checkIn: x.checkIn?.toISOString(), checkOut: x.checkOut?.toISOString(), sanghyangPrice: Number(match.price), competitorPrice: Number(x.price), difference: Number((Number(x.price) - Number(match.price)).toFixed(2)), source: x.source, sourceUrl: x.sourceUrl ?? undefined }];
+  });
+  return NextResponse.json({ ...summary, comparison, priceComparison: priceRows, sanghyang: { rating: sanghyangRating, reviewCount: 2937 } });
 }
 
 export function validateSummaryParams(period: string, segment: string, source: string | null) {

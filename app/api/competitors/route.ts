@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { competitorRepository } from "@/lib/market/competitor-repository";
+import { db } from "@/lib/db";
 import { NAMA_COOKIE, tokenSah } from "@/lib/sandi";
 
 const auth = (request: Request) => {
@@ -33,7 +34,13 @@ export async function POST(request: Request) {
     if (!uuid(body.competitorId) || (body.roomName != null && typeof body.roomName !== "string") || (body.packageName != null && typeof body.packageName !== "string") || (!body.roomName && !body.packageName) || typeof body.source !== "string" || !body.source.trim() || typeof body.price !== "number" || !Number.isFinite(body.price) || body.price < 0 || checkIn === undefined || checkOut === undefined || observedAt === undefined) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
     const sourceUrl = url(body.sourceUrl);
     if (sourceUrl === undefined || (body.originalPrice !== undefined && (typeof body.originalPrice !== "number" || !Number.isFinite(body.originalPrice) || body.originalPrice < 0)) || (body.discount !== undefined && (typeof body.discount !== "number" || !Number.isFinite(body.discount) || body.discount < 0 || body.discount > 100))) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
-    return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId as string, roomName: body.roomName as string | null, packageName: body.packageName as string | null, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt as Date }), { status: 201 });
+    return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId as string, roomName: body.roomName as string | null, packageName: body.packageName as string | null, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt as Date, currency: typeof body.currency === "string" ? body.currency : "IDR", guests: typeof body.guests === "number" ? body.guests : 2 }), { status: 201 });
+  }
+  if (body.type === "sanghyangPriceSnapshot") {
+    const checkIn = date(body.checkIn); const checkOut = date(body.checkOut); const observedAt = date(body.observedAt);
+    const sourceUrl = url(body.sourceUrl);
+    if (typeof body.roomName !== "string" || !body.roomName.trim() || typeof body.source !== "string" || !body.source.trim() || typeof body.price !== "number" || !Number.isFinite(body.price) || body.price < 0 || checkIn == null || checkOut == null || observedAt == null || sourceUrl === undefined || (body.guests !== undefined && (typeof body.guests !== "number" || !Number.isInteger(body.guests) || body.guests < 1 || body.guests > 20))) return NextResponse.json({ error: "invalid Sanghyang price snapshot" }, { status: 400 });
+    return NextResponse.json(await db.sanghyangPriceSnapshot.create({ data: { roomName: body.roomName.trim(), packageName: typeof body.packageName === "string" ? body.packageName : null, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, currency: typeof body.currency === "string" ? body.currency : "IDR", guests: typeof body.guests === "number" ? body.guests : 2, checkIn, checkOut, source: body.source.trim(), sourceUrl, observedAt } }), { status: 201 });
   }
   if (body.type === "promotion") {
     const startsAt = date(body.startsAt); const endsAt = date(body.endsAt); const capturedAt = date(body.capturedAt);
@@ -54,7 +61,7 @@ export async function POST(request: Request) {
     if (!competitor) return NextResponse.json({ error: "competitor not found" }, { status: 404 });
     return NextResponse.json(await competitorRepository.createReview({ competitorId: body.competitorId as string, externalId: body.externalId.trim(), source: body.source.trim(), sourceUrl: sourceUrl as string, rating: body.rating, reviewDate: reviewDate as Date, title: typeof body.title === "string" ? body.title : null, text: body.text.trim(), sentiment: body.sentiment as "positive" | "neutral" | "negative", themes: body.themes as string[], capturedAt: capturedAt as Date }), { status: 201 });
   }
-  return NextResponse.json({ error: "type must be competitor or priceSnapshot" }, { status: 400 });
+  return NextResponse.json({ error: "type must be competitor, priceSnapshot, or sanghyangPriceSnapshot" }, { status: 400 });
 }
 
 export async function PATCH(request: Request) {
