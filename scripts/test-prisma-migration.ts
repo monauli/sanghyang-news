@@ -28,4 +28,9 @@ for (const relation of [
 
 assert.match(sql, /CREATE TYPE "ScrapeRunStatus" AS ENUM \('running', 'success', 'partial', 'failed'\)/, "run statuses are preserved");
 
+const promotionSql = readFileSync("prisma/migrations/20260923030000_competitor_promotions/migration.sql", "utf8");
+assert.match(promotionSql, /CREATE TABLE "CompetitorPromotion"/);
+assert.match(promotionSql, /"endsAt" TIMESTAMP\(3\),/);
+assert.match(promotionSql, /CompetitorPromotion_competitorId_fkey.*ON DELETE RESTRICT/);
+
 console.log("initial Prisma migration check passed");

@@ -7,7 +7,7 @@ CREATE TABLE "CompetitorPromotion" (
     "category" TEXT NOT NULL,
     "description" TEXT,
     "startsAt" TIMESTAMP(3) NOT NULL,
-    "endsAt" TIMESTAMP(3) NOT NULL,
+    "endsAt" TIMESTAMP(3),
     "price" DECIMAL(12,2),
     "originalPrice" DECIMAL(12,2),
     "discount" DECIMAL(5,2),
@@ -22,4 +22,4 @@ CREATE TABLE "CompetitorPromotion" (
 
 CREATE INDEX "CompetitorPromotion_competitorId_capturedAt_idx" ON "CompetitorPromotion"("competitorId", "capturedAt");
 CREATE INDEX "CompetitorPromotion_status_startsAt_endsAt_idx" ON "CompetitorPromotion"("status", "startsAt", "endsAt");
-ALTER TABLE "CompetitorPromotion" ADD CONSTRAINT "CompetitorPromotion_competitorId_fkey" FOREIGN KEY ("competitorId") REFERENCES "Competitor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CompetitorPromotion" ADD CONSTRAINT "CompetitorPromotion_competitorId_fkey" FOREIGN KEY ("competitorId") REFERENCES "Competitor"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
