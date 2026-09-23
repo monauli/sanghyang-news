@@ -112,7 +112,7 @@ export default function Halaman1() {
       <StepIndicator aktif={1} />
 
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-green-900">Sanghyang Highlights</h1>
+        <h1 className="text-2xl font-bold text-[#226e6b]">Sanghyang Highlights</h1>
         <p className="mt-1 text-sm text-gray-500">Buat newsletter berita otomatis.</p>
         <nav aria-label="Area aplikasi" className="mt-5 grid gap-2 sm:grid-cols-3">
           <a href="#newsletter" className="rounded-lg bg-green-800 px-3 py-3 text-center text-sm font-semibold text-white">Newsletter</a>
@@ -127,7 +127,7 @@ export default function Halaman1() {
                 type="button"
                 onClick={() => pilih('bulanLalu')}
                 disabled={loading}
-                className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900 disabled:opacity-50"
+                className="rounded-lg bg-[#226e6b] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#185754] disabled:opacity-50"
               >
                 Bulan Lalu
               </button>
@@ -135,7 +135,7 @@ export default function Halaman1() {
                 type="button"
                 onClick={() => pilih('bulanIni')}
                 disabled={loading}
-                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:border-green-800 hover:text-green-900 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:border-[#226e6b] hover:text-[#226e6b] disabled:opacity-50"
               >
                 Bulan Ini
               </button>
@@ -143,7 +143,7 @@ export default function Halaman1() {
                 type="button"
                 onClick={() => pilih('hari30')}
                 disabled={loading}
-                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:border-green-800 hover:text-green-900 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:border-[#226e6b] hover:text-[#226e6b] disabled:opacity-50"
               >
                 30 Hari Terakhir
               </button>
@@ -183,7 +183,7 @@ export default function Halaman1() {
           <button
             type="submit"
             disabled={!siap || loading}
-            className="rounded-lg bg-green-800 px-6 py-3 font-semibold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="rounded-lg bg-[#226e6b] px-6 py-3 font-semibold text-white hover:bg-[#185754] disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {loading ? 'Sedang mencari berita…' : 'Cari Berita'}
           </button>

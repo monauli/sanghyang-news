@@ -118,8 +118,8 @@ export default function MarketIntelligencePage() {
     setApplied({ period: "30d", segment: "all", source: "" });
   };
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-[#14233d] lg:flex">
-      <aside className="w-full bg-[#132840] px-5 py-6 text-white lg:min-h-screen lg:w-[220px]">
+    <div className="min-h-screen bg-[#f7f9f8] text-[#183334] lg:flex">
+      <aside className="w-full bg-[#226e6b] px-5 py-6 text-white lg:min-h-screen lg:w-[220px]">
         <div className="mb-12 text-[21px] font-semibold">
           Sanghyang Resort
           <small className="block text-sm font-normal text-slate-300">
@@ -128,13 +128,13 @@ export default function MarketIntelligencePage() {
         </div>
           <a
             href="/market-intelligence"
-            className="block rounded-lg bg-white/10 px-3 py-2.5 text-sm font-semibold"
+            className="block rounded-lg bg-[#b7ff67] px-3 py-2.5 text-sm font-semibold text-[#1d5c50]"
           >
             Market Intelligence
           </a>
           <a
             href="/admin/scraping"
-            className="mt-2 block rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10"
+            className="mt-2 block rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/10"
           >
             Update Data
           </a>
@@ -165,7 +165,7 @@ export default function MarketIntelligencePage() {
               aria-selected={tab === x}
               key={x}
               onClick={() => setTab(x)}
-              className={`whitespace-nowrap border-b-2 px-1 pb-4 text-sm font-semibold ${tab === x ? "border-[#142840] text-[#142840]" : "border-transparent text-[#68768a]"}`}
+              className={`whitespace-nowrap border-b-2 px-1 pb-4 text-sm font-semibold ${tab === x ? "border-[#226e6b] text-[#226e6b]" : "border-transparent text-[#68768a]"}`}
             >
               {x}
             </button>
@@ -212,7 +212,7 @@ export default function MarketIntelligencePage() {
           </button>
           <button
             onClick={() => setApplied({ period, segment, source })}
-            className="rounded-lg bg-[#142840] px-6 py-3 text-sm font-semibold text-white"
+          className="rounded-lg bg-[#183334] px-6 py-3 text-sm font-semibold text-white"
           >
             Apply
           </button>
