@@ -119,12 +119,17 @@ export default function Halaman1() {
   }
 
   return (
-    <>
-      <nav className="flex items-center justify-between bg-[#132840] px-6 py-4 text-white" aria-label="Navigasi utama">
-        <a href="/dashboard" className="font-semibold">Sanghyang Resort</a>
-        <div className="flex gap-5 text-sm text-white/80"><a href="/dashboard">Dashboard</a><a href="/market-intelligence">Market Intelligence</a></div>
-      </nav>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-12">
+    <div className="min-h-screen bg-[#f7f9f8] lg:flex">
+      <aside className="w-full bg-[#132840] px-6 py-7 text-white lg:min-h-screen lg:w-64">
+        <a href="/dashboard" className="text-2xl font-bold tracking-tight">Sanghyang</a>
+        <p className="mt-1 text-sm text-white/70">Management workspace</p>
+        <nav className="mt-12 space-y-2" aria-label="Navigasi utama">
+          <a href="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Dashboard</a>
+          <a href="/" className="block rounded-xl bg-[#b7ff67] px-4 py-3 text-sm font-semibold text-[#1d5c50]">Newsletter</a>
+          <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Market Intelligence</a>
+        </nav>
+      </aside>
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-12">
       <StepIndicator aktif={1} />
 
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
@@ -224,6 +229,6 @@ export default function Halaman1() {
         </form>
       </div>
       </main>
-    </>
+    </div>
   );
 }
