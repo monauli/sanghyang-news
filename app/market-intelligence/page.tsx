@@ -136,19 +136,13 @@ export default function MarketIntelligencePage() {
           </a>
       </aside>
       <main className="min-w-0 flex-1 px-5 py-7 lg:px-9">
-        <header className="border-b border-[#dbe3eb] pb-5">
-          <p className="text-sm text-[#66758a]">
-            Insights for a stronger tomorrow
-          </p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
-            Market Intelligence
-          </h1>
-          <p className="mt-3 text-sm text-[#66758a]">
-            {data?.recentRows.length
-              ? fmt(data.recentRows[data.recentRows.length - 1].date)
-              : "Selected period"}{" "}
-            – {fmt(new Date().toISOString())}
-          </p>
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#dbe3eb] pb-5">
+          <div>
+            <p className="text-sm text-[#66758a]">Insights for a stronger tomorrow</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Market Intelligence</h1>
+            <p className="mt-3 text-sm text-[#66758a]">{data?.recentRows.length ? fmt(data.recentRows[data.recentRows.length - 1].date) : "Selected period"} – {fmt(new Date().toISOString())}</p>
+          </div>
+          <a href="/admin/scraping" className="rounded-lg bg-[#183334] px-5 py-3 text-sm font-semibold text-white hover:bg-[#226e6b]">Update Data</a>
         </header>
         <div
           role="tablist"
