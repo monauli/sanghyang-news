@@ -3,6 +3,7 @@
   "regions": ["sin1"],
   "crons": [{ "path": "/api/cron/scrape", "schedule": "0 * * * *" }],
   "functions": {
+    "app/api/cron/scrape/route.ts": { "maxDuration": 300 },
     "app/api/search/route.ts": { "maxDuration": 60 },
     "app/api/summarize/route.ts": { "maxDuration": 60 },
     "app/api/export/route.ts": { "maxDuration": 60, "memory": 1769 },

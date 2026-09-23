@@ -111,15 +111,35 @@ async function scrape(context: ScrapeContext, onError: (error: ScrapeFailure) =>
   throw new Error(`Unsupported scrape method: ${context.source.method}`);
 }
 
+export const NEWS_SCRAPE_LEASE_MS = 10 * 60 * 1000;
+
+type ScrapeLockClient = {
+  scrapeLock: {
+    create(args: { data: { job: "news" } }): Promise<unknown>;
+    updateMany(args: { where: { job: "news"; acquiredAt: { lt: Date } }; data: { acquiredAt: Date } }): Promise<{ count: number }>;
+  };
+};
+
+export function createNewsLockClaimer(client: ScrapeLockClient, now = () => new Date()) {
+  return async function claimNewsRun(): Promise<boolean> {
+    const current = now();
+    try {
+      await client.scrapeLock.create({ data: { job: "news" } });
+      return true;
+    } catch (error) {
+      if ((error as { code?: string }).code !== "P2002") throw error;
+      const reclaimed = await client.scrapeLock.updateMany({
+        where: { job: "news", acquiredAt: { lt: new Date(current.getTime() - NEWS_SCRAPE_LEASE_MS) } },
+        data: { acquiredAt: current },
+      });
+      return reclaimed.count === 1;
+    }
+  };
+}
+
 async function claimNewsRun(): Promise<boolean> {
   const { db } = await import("../db");
-  try {
-    await db.scrapeLock.create({ data: { job: "news" } });
-    return true;
-  } catch (error) {
-    if ((error as { code?: string }).code === "P2002") return false;
-    throw error;
-  }
+  return createNewsLockClaimer(db)();
 }
 
 async function releaseNewsRun(): Promise<void> {
