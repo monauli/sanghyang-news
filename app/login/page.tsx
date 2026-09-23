@@ -21,7 +21,7 @@ export default function HalamanMasuk() {
         body: JSON.stringify({ password: sandi }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Gagal masuk.');
-      router.replace('/');
+      router.replace('/dashboard');
       router.refresh();
     } catch (e) {
       setGalat((e as Error).message);
