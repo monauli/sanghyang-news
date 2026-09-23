@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams; const period = (params.get('period') ?? '30d') as SummaryPeriod; const segment = params.get('segment') ?? 'all'; const source = params.get('source');
   if (!validateSummaryParams(period, segment, source)) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
   const [items, competitors, prices, promotions, reviews] = await Promise.all([
-    db.marketItem.findMany({ orderBy: { createdAt: 'desc' } }),
+    db.marketItem.findMany({ include: { article: { select: { title: true, publishedAt: true } } }, orderBy: { createdAt: 'desc' } }),
     db.competitor.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
     db.competitorPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
     db.competitorPromotion.findMany({ orderBy: { capturedAt: 'desc' } }),
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   ]);
   const rows: SummaryRow[] = [
     ...competitors.map((x) => ({ date: (x.ratingObservedAt ?? x.updatedAt).toISOString(), category: 'Competitors', source: x.ratingSource ?? 'Competitor registry', headline: `${x.name} · ${x.location ?? 'Anyer–Carita–Cilegon'}${x.rating == null ? '' : ` · ${Number(x.rating).toFixed(1)}/5 · ${x.reviewCount?.toLocaleString('id-ID') ?? '?'} ulasan`}`, sentiment: 'neutral' as const })),
-    ...items.map((x) => ({ date: x.createdAt.toISOString(), category: x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : x.kind === 'entertainment' ? 'Entertainment' : 'Destinations', source: 'Market news', headline: x.description ?? x.targetAudience ?? 'New market intelligence item', sentiment: 'positive' as const })),
+    ...items.map((x) => ({ date: (x.article.publishedAt ?? x.createdAt).toISOString(), category: x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : x.kind === 'entertainment' ? 'Entertainment' : 'Destinations', source: 'Market news', headline: x.article.title, sentiment: 'positive' as const })),
     ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, headline: `${x.roomName ?? x.packageName ?? 'Rate'} observed at ${x.price}`, sentiment: 'neutral' as const })),
     ...promotions.map((x) => ({ date: x.capturedAt.toISOString(), category: 'Promotions', source: x.source, headline: x.title, sentiment: 'neutral' as const })),
     ...reviews.map((x) => ({ date: x.capturedAt.toISOString(), reviewDate: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, headline: x.text, sentiment: x.sentiment as SummaryRow['sentiment'] })),
