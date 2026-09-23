@@ -22,6 +22,7 @@ export type MarketItemRepositoryClient = {
 
 export function createMarketItemRepository(client: MarketItemRepositoryClient) {
   return {
+    // One MarketItem per Article is intentional for Phase 2 item classification.
     save(item: MarketItemInput) {
       const data = { ...item, tags: item.tags ?? undefined };
       return client.marketItem.upsert({ where: { articleId: item.articleId }, create: data, update: data });
