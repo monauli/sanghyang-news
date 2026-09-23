@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 process.env.DATABASE_URL ??= "postgresql://localhost/sanghyang_test";
 process.env.APP_PASSWORD = "test-password";
 
+async function main() {
 const { POST } = await import("../app/api/market-intelligence/route");
-
 const response = await POST(new Request("https://example.com/api/market-intelligence", {
   method: "POST",
   body: JSON.stringify({ articleId: "00000000-0000-0000-0000-000000000000", kind: "event" }),
@@ -22,3 +22,5 @@ const invalidDate = await POST(new Request("https://example.com/api/market-intel
 }));
 assert.equal(invalidDate.status, 400);
 console.log("market item route checks passed");
+}
+void main();
