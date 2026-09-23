@@ -231,6 +231,7 @@ model CompetitorReview {
 
 model MarketInsight {
   id               String              @id @default(uuid()) @db.Uuid
+  fingerprint      String
   type             MarketInsightType
   title            String
   summary          String
@@ -244,6 +245,7 @@ model MarketInsight {
 
   @@index([type, generatedAt])
   @@index([status, generatedAt])
+  @@index([fingerprint, status])
 }
 
 model ScrapeRun {
