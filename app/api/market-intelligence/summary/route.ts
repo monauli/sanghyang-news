@@ -10,7 +10,7 @@ const segments = new Set(['all', 'fnb', 'event', 'destination', 'competitor', 'p
 export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: 'Belum masuk.' }, { status: 401 });
   const params = new URL(request.url).searchParams; const period = (params.get('period') ?? '30d') as SummaryPeriod; const segment = params.get('segment') ?? 'all'; const source = params.get('source');
-  if (!periods.has(period) || !segments.has(segment) || (source !== null && (source.length === 0 || source.length > 120))) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
+  if (!validateSummaryParams(period, segment, source)) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
   const [items, competitors, prices, promotions, reviews] = await Promise.all([
     db.marketItem.findMany({ orderBy: { createdAt: 'desc' } }),
     db.competitor.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
@@ -25,4 +25,8 @@ export async function GET(request: Request) {
     ...reviews.map((x) => ({ date: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, headline: x.text, sentiment: x.sentiment as SummaryRow['sentiment'] })),
   ].filter((row) => !source || row.source === source).filter((row) => segment === 'all' || ({ fnb: 'F&B', event: 'Events', destination: 'Destinations', competitor: 'Competitors', promotion: 'Promotions', review: 'Reviews' } as Record<string, string>)[segment] === row.category);
   return NextResponse.json(transformMarketSummary({ rows, competitors: competitors.length, marketItems: items.length, period }));
+}
+
+export function validateSummaryParams(period: string, segment: string, source: string | null) {
+  return periods.has(period as SummaryPeriod) && segments.has(segment) && (source === null || (source.length > 0 && source.length <= 120));
 }
