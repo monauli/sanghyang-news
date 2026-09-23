@@ -59,6 +59,17 @@ enum PromotionStatus {
   expired
 }
 
+enum MarketInsightType {
+  insight
+  opportunity
+  recommendation
+}
+
+enum MarketInsightStatus {
+  active
+  archived
+}
+
 model Source {
   id              String         @id @default(uuid()) @db.Uuid
   name            String
@@ -216,6 +227,23 @@ model CompetitorReview {
   @@unique([competitorId, source, externalId])
   @@index([competitorId, reviewDate])
   @@index([sentiment, reviewDate])
+}
+
+model MarketInsight {
+  id               String              @id @default(uuid()) @db.Uuid
+  type             MarketInsightType
+  title            String
+  summary          String
+  evidence         Json
+  sourceReferences Json
+  priority         Int
+  confidence       Int
+  status           MarketInsightStatus @default(active)
+  generatedAt      DateTime            @default(now())
+  createdAt        DateTime            @default(now())
+
+  @@index([type, generatedAt])
+  @@index([status, generatedAt])
 }
 
 model ScrapeRun {

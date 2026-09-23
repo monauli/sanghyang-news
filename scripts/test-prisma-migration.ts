@@ -33,4 +33,11 @@ assert.match(promotionSql, /CREATE TABLE "CompetitorPromotion"/);
 assert.match(promotionSql, /"endsAt" TIMESTAMP\(3\),/);
 assert.match(promotionSql, /CompetitorPromotion_competitorId_fkey.*ON DELETE RESTRICT/);
 
+const insightSql = readFileSync("prisma/migrations/20260923050000_market_insights/migration.sql", "utf8");
+assert.match(insightSql, /CREATE TYPE "MarketInsightType" AS ENUM \('insight', 'opportunity', 'recommendation'\)/);
+assert.match(insightSql, /"evidence" JSONB NOT NULL/);
+assert.match(insightSql, /"sourceReferences" JSONB NOT NULL/);
+assert.match(insightSql, /"priority" INTEGER NOT NULL/);
+assert.match(insightSql, /"confidence" INTEGER NOT NULL/);
+
 console.log("initial Prisma migration check passed");
