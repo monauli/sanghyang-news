@@ -11,10 +11,13 @@ const fallback = await generateInsights({ rows: [{ date: new Date().toISOString(
 assert.equal(fallback[0]?.type, "insight");
 
 const records: unknown[] = [];
-const repository = createInsightRepository({ marketInsight: { create: async ({ data }) => (records.push(data), data), findMany: async () => records } });
+let conflict = false;
+const repository = createInsightRepository({ marketInsight: { create: async ({ data }) => { if (conflict) throw { code: "P2002" }; records.push(data); return data; }, findMany: async () => records, findFirst: async () => records[0] ?? null } });
 await repository.create(generated[0]);
+conflict = true;
+assert.equal(await repository.create(generated[0]), records[0], "duplicate active fingerprint returns existing row");
 await repository.create(generated[0]);
-assert.equal(records.length, 2, "insights are append-only");
+assert.equal(records.length, 1, "duplicate active insight is not appended");
 console.log("market insight checks passed");
 }
 void main();

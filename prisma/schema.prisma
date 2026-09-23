@@ -232,6 +232,7 @@ model CompetitorReview {
 model MarketInsight {
   id               String              @id @default(uuid()) @db.Uuid
   fingerprint      String
+  activeFingerprint String?
   type             MarketInsightType
   title            String
   summary          String

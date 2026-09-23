@@ -34,10 +34,13 @@ assert.match(promotionSql, /"endsAt" TIMESTAMP\(3\),/);
 assert.match(promotionSql, /CompetitorPromotion_competitorId_fkey.*ON DELETE RESTRICT/);
 
 const insightSql = readFileSync("prisma/migrations/20260923050000_market_insights/migration.sql", "utf8");
+const activeFingerprintSql = readFileSync("prisma/migrations/20260923070000_market_insight_active_fingerprint/migration.sql", "utf8");
 assert.match(insightSql, /CREATE TYPE "MarketInsightType" AS ENUM \('insight', 'opportunity', 'recommendation'\)/);
 assert.match(insightSql, /"evidence" JSONB NOT NULL/);
 assert.match(insightSql, /"sourceReferences" JSONB NOT NULL/);
 assert.match(insightSql, /"priority" INTEGER NOT NULL/);
 assert.match(insightSql, /"confidence" INTEGER NOT NULL/);
+assert.match(activeFingerprintSql, /CREATE UNIQUE INDEX "MarketInsight_activeFingerprint_key"/);
+assert.match(activeFingerprintSql, /WHERE "activeFingerprint" IS NOT NULL/);
 
 console.log("initial Prisma migration check passed");
