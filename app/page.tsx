@@ -114,11 +114,13 @@ export default function Halaman1() {
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-green-900">Sanghyang Highlights</h1>
         <p className="mt-1 text-sm text-gray-500">Buat newsletter berita otomatis.</p>
-        <a href="/market-intelligence" className="mt-4 inline-block text-sm font-semibold text-green-800 underline hover:text-green-900">
-          Buka Market Intelligence →
-        </a>
+        <nav aria-label="Area aplikasi" className="mt-5 grid gap-2 sm:grid-cols-3">
+          <a href="#newsletter" className="rounded-lg bg-green-800 px-3 py-3 text-center text-sm font-semibold text-white">Newsletter</a>
+          <a href="/market-intelligence" className="rounded-lg border border-green-800 px-3 py-3 text-center text-sm font-semibold text-green-900">Market Intelligence</a>
+          <a href="/admin/scraping" className="rounded-lg border border-gray-300 px-3 py-3 text-center text-sm font-semibold text-gray-700">Scraping Admin</a>
+        </nav>
 
-        <form onSubmit={cari} className="mt-8 flex flex-col gap-6">
+        <form id="newsletter" onSubmit={cari} className="mt-8 flex flex-col gap-6">
           <div>
             <p className="mb-2 text-sm font-medium text-gray-700">Pilih periode</p>
             <div className="flex flex-wrap gap-2">
