@@ -117,7 +117,6 @@ export default function Halaman1() {
         <nav aria-label="Area aplikasi" className="mt-5 grid gap-2 sm:grid-cols-3">
           <a href="#newsletter" className="rounded-lg bg-green-800 px-3 py-3 text-center text-sm font-semibold text-white">Newsletter</a>
           <a href="/market-intelligence" className="rounded-lg border border-green-800 px-3 py-3 text-center text-sm font-semibold text-green-900">Market Intelligence</a>
-          <a href="/admin/scraping" className="rounded-lg border border-gray-300 px-3 py-3 text-center text-sm font-semibold text-gray-700">Scraping Admin</a>
         </nav>
 
         <form id="newsletter" onSubmit={cari} className="mt-8 flex flex-col gap-6">
