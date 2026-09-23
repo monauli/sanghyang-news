@@ -112,6 +112,9 @@ model MarketItem {
   venue     String?
   organizer String?
   brand     String?
+  description    String?
+  targetAudience String?
+  relevanceScore Int?
   startsAt  DateTime?
   endsAt    DateTime?
   tags      Json?

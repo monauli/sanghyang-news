@@ -1,0 +1,37 @@
+import { GoogleGenAI } from "@google/genai";
+import { model } from "../gemini";
+import type { MarketItemKind } from "../db-types";
+export type Classification = { kind: MarketItemKind; tags: string[]; targetAudience: string; relevanceScore: number; description?: string };
+export type ClassifierInput = { title: string; text: string };
+export type GenerateClassification = (prompt: string) => Promise<string>;
+const kinds = new Set<MarketItemKind>(["fnb", "event", "destination"]);
+const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
+export function fallbackClassification(input: ClassifierInput): Classification {
+  const text = `${input.title} ${input.text}`.toLowerCase();
+  const event = /event|festival|konser|pameran|acara|workshop|agenda/.test(text);
+  const fnb = /restaurant|restoran|cafe|kafe|kuliner|makan|menu|chef|food/.test(text);
+  const kind: MarketItemKind = event ? "event" : fnb ? "fnb" : "destination";
+  return { kind, tags: [kind], targetAudience: event ? "travellers and event seekers" : fnb ? "food and leisure travellers" : "leisure travellers", relevanceScore: 50 };
+}
+function validate(value: unknown, fallback: Classification): Classification {
+  const object = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const kind = kinds.has(object.kind as MarketItemKind) ? object.kind as MarketItemKind : fallback.kind;
+  const tags = Array.isArray(object.tags) ? object.tags.filter((tag): tag is string => typeof tag === "string").map(tag => tag.trim()).filter(Boolean).slice(0, 12) : fallback.tags;
+  const score = typeof object.relevanceScore === "number" && Number.isFinite(object.relevanceScore) ? Math.max(0, Math.min(100, Math.round(object.relevanceScore))) : fallback.relevanceScore;
+  const description = clean(object.description, 500);
+  return { kind, tags: tags.length ? [...new Set(tags)] : fallback.tags, targetAudience: clean(object.targetAudience, 120) || fallback.targetAudience, relevanceScore: score, ...(description ? { description } : {}) };
+}
+const defaultGenerate: GenerateClassification = async (prompt) => {
+  if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY unavailable");
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const result = await ai.models.generateContent({ model: model(), contents: prompt });
+  return result.text ?? "";
+};
+export async function classifyArticle(input: ClassifierInput, generate: GenerateClassification = defaultGenerate): Promise<Classification> {
+  const fallback = fallbackClassification(input);
+  try {
+    const raw = await generate(`Return JSON only with kind (fnb|event|destination), tags (string[]), targetAudience (string), relevanceScore (0-100), description (optional). Title: ${input.title}\nText: ${input.text.slice(0, 8000)}`);
+    const match = raw.match(/\{[\s\S]*\}/);
+    return validate(match ? JSON.parse(match[0]) : {}, fallback);
+  } catch { return fallback; }
+}

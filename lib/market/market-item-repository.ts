@@ -11,6 +11,9 @@ export type MarketItemInput = {
   startsAt?: Date | null;
   endsAt?: Date | null;
   tags?: string[] | null;
+  description?: string | null;
+  targetAudience?: string | null;
+  relevanceScore?: number | null;
 };
 
 export type MarketItemRepositoryClient = {
