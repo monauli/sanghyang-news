@@ -8,7 +8,8 @@ const auth = (request: Request) => {
   return Boolean(password && tokenSah(token, password));
 };
 const url = (value: unknown) => value == null ? null : typeof value === "string" && URL.canParse(value) ? value : undefined;
-const date = (value: unknown) => value == null ? null : typeof value === "string" && !Number.isNaN(Date.parse(value)) ? new Date(value) : undefined;
+const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
+const date = (value: unknown) => value == null ? null : typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && !Number.isNaN(Date.parse(value)) ? new Date(value) : undefined;
 
 export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: "Belum masuk." }, { status: 401 });
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   }
   if (body.type === "priceSnapshot") {
     const checkIn = date(body.checkIn); const checkOut = date(body.checkOut); const observedAt = date(body.observedAt);
-    if (typeof body.competitorId !== "string" || typeof body.roomPackage !== "string" || typeof body.source !== "string" || typeof body.price !== "number" || body.price < 0 || checkIn === undefined || checkOut === undefined || observedAt === undefined) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
+    if (!uuid(body.competitorId) || typeof body.roomPackage !== "string" || !body.roomPackage.trim() || typeof body.source !== "string" || !body.source.trim() || typeof body.price !== "number" || body.price < 0 || checkIn === undefined || checkOut === undefined || observedAt === undefined) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
     const sourceUrl = url(body.sourceUrl);
     if (sourceUrl === undefined || (body.originalPrice !== undefined && (typeof body.originalPrice !== "number" || body.originalPrice < 0)) || (body.discount !== undefined && (typeof body.discount !== "number" || body.discount < 0 || body.discount > 100))) return NextResponse.json({ error: "invalid price snapshot" }, { status: 400 });
     return NextResponse.json(await competitorRepository.createPriceSnapshot({ competitorId: body.competitorId, roomPackage: body.roomPackage, price: body.price, originalPrice: body.originalPrice as number | null, discount: body.discount as number | null, checkIn, checkOut, source: body.source, sourceUrl, observedAt: observedAt ?? undefined }), { status: 201 });
