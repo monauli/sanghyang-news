@@ -12,12 +12,15 @@ assert.equal(fallback[0]?.type, "insight");
 
 const records: unknown[] = [];
 let conflict = false;
-const repository = createInsightRepository({ marketInsight: { create: async ({ data }) => { if (conflict) throw { code: "P2002" }; records.push(data); return data; }, findMany: async () => records, findFirst: async () => records[0] ?? null } });
+let updateArgs: { where: Record<string, unknown>; data: Record<string, unknown> } | undefined;
+const repository = createInsightRepository({ marketInsight: { create: async ({ data }) => { if (conflict) throw { code: "P2002" }; records.push(data); return data; }, findMany: async () => records, findFirst: async () => records[0] ?? null, update: async (args) => { updateArgs = args; return args; } } });
 await repository.create(generated[0]);
 conflict = true;
 assert.equal(await repository.create(generated[0]), records[0], "duplicate active fingerprint returns existing row");
 await repository.create(generated[0]);
 assert.equal(records.length, 1, "duplicate active insight is not appended");
+await repository.archive("insight-id");
+assert.deepEqual(updateArgs, { where: { id: "insight-id" }, data: { status: "archived", activeFingerprint: null } });
 console.log("market insight checks passed");
 }
 void main();

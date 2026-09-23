@@ -17,6 +17,7 @@ const deps = {
   repository: {
     list: async () => saved,
     create: async (item: unknown) => { saved.push({ ...item as object, fingerprint: "" }); return item; },
+    archive: async () => undefined,
   },
 };
 const authorized = { headers: { cookie: `${NAMA_COOKIE}=${tokenDari("test-password")}` } };

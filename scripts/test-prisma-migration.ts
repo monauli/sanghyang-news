@@ -41,6 +41,9 @@ assert.match(insightSql, /"sourceReferences" JSONB NOT NULL/);
 assert.match(insightSql, /"priority" INTEGER NOT NULL/);
 assert.match(insightSql, /"confidence" INTEGER NOT NULL/);
 assert.match(activeFingerprintSql, /CREATE UNIQUE INDEX "MarketInsight_activeFingerprint_key"/);
-assert.match(activeFingerprintSql, /WHERE "activeFingerprint" IS NOT NULL/);
+assert.match(activeFingerprintSql, /ROW_NUMBER\(\) OVER/);
+assert.match(activeFingerprintSql, /PARTITION BY "fingerprint" ORDER BY "generatedAt" DESC, "createdAt" DESC, "id" DESC/);
+assert.match(activeFingerprintSql, /CASE WHEN ranked\.row_number = 1 THEN ranked\."fingerprint" ELSE NULL END/);
+assert.match(activeFingerprintSql, /WHERE "activeFingerprint" IS NOT NULL AND "status" = 'active'/);
 
 console.log("initial Prisma migration check passed");
