@@ -1,6 +1,8 @@
 export type {
   Article,
   ArticleStatus,
+  MarketItem,
+  MarketItemKind,
   ScrapeError,
   ScrapeLock,
   ScrapeJob,

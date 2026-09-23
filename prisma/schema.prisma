@@ -29,6 +29,12 @@ enum ArticleStatus {
   duplicate
 }
 
+enum MarketItemKind {
+  fnb
+  event
+  destination
+}
+
 enum ScrapeJob {
   news
 }
@@ -85,10 +91,30 @@ model Article {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   source          Source        @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  marketItem      MarketItem?
 
   @@index([sourceId, normalizedTitle, publishedAt])
   @@index([sourceId, contentHash])
   @@index([status, createdAt])
+}
+
+model MarketItem {
+  id          String         @id @default(uuid()) @db.Uuid
+  articleId   String         @unique @db.Uuid
+  kind        MarketItemKind
+  location    String?
+  venue       String?
+  organizer   String?
+  brand       String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  tags        Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  article     Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([kind, location])
+  @@index([startsAt])
 }
 
 model ScrapeRun {
