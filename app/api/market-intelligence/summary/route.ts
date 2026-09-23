@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     .filter((x) => x.rating != null && x.reviewCount != null)
     .map((x) => ({ name: x.name, rating: Number(x.rating), reviewCount: x.reviewCount ?? 0, difference: Number((Number(x.rating) - sanghyangRating).toFixed(1)), source: x.ratingSource ?? 'Public source', sourceUrl: x.ratingSourceUrl ?? undefined }))
     .sort((a, b) => b.reviewCount - a.reviewCount);
-  return NextResponse.json({ ...summary, comparison, sanghyang: { rating: sanghyangRating, reviewCount: 2909 } });
+  return NextResponse.json({ ...summary, comparison, sanghyang: { rating: sanghyangRating, reviewCount: 2937 } });
 }
 
 export function validateSummaryParams(period: string, segment: string, source: string | null) {
