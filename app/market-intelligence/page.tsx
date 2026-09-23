@@ -126,6 +126,8 @@ export default function MarketIntelligencePage() {
             Management
           </small>
         </div>
+        <a href="/dashboard" className="mb-2 block rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/10">Dashboard</a>
+        <a href="/" className="mb-2 block rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/10">Newsletter</a>
           <a
             href="/market-intelligence"
             className="block rounded-lg bg-[#b7ff67] px-3 py-2.5 text-sm font-semibold text-[#1d5c50]"
