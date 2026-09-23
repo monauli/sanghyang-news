@@ -127,7 +127,6 @@ export default function HalamanAdminScraping() {
           <a href="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Dashboard</a>
           <a href="/" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Newsletter</a>
           <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Market Intelligence</a>
-          <a href="/admin/scraping" className="block rounded-xl bg-[#b7ff67] px-4 py-3 text-sm font-semibold text-[#1d5c50]">Update Data</a>
         </nav>
       </aside>
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">

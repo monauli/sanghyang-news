@@ -119,9 +119,9 @@ export default function MarketIntelligencePage() {
   };
   return (
     <div className="min-h-screen bg-[#f7f9f8] text-[#183334] lg:flex">
-      <aside className="w-full bg-[#132840] px-5 py-6 text-white lg:min-h-screen lg:w-[220px]">
+      <aside className="w-full bg-[#132840] px-6 py-7 text-white lg:min-h-screen lg:w-64">
         <div className="mb-12 text-[21px] font-semibold">
-          Sanghyang Resort
+          Sanghyang
           <small className="block text-sm font-normal text-slate-300">
             Management
           </small>
@@ -133,12 +133,6 @@ export default function MarketIntelligencePage() {
             className="block rounded-lg bg-[#b7ff67] px-3 py-2.5 text-sm font-semibold text-[#1d5c50]"
           >
             Market Intelligence
-          </a>
-          <a
-            href="/admin/scraping"
-            className="mt-2 block rounded-lg px-3 py-2.5 text-sm text-white/80 hover:bg-white/10"
-          >
-            Update Data
           </a>
       </aside>
       <main className="min-w-0 flex-1 px-5 py-7 lg:px-9">
