@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
+import { sanghyangProfile } from "@/lib/market/sanghyang-profile";
 type Period = "30d" | "90d" | "year";
 type Summary = {
   counts: Record<string, number>;
@@ -211,6 +212,21 @@ export default function MarketIntelligencePage() {
           >
             Apply
           </button>
+        </section>
+        <section className="mb-4 rounded-lg border border-[#b7ff67] bg-[#f4fbe9] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold">Baseline Sanghyang untuk perbandingan</h2>
+              <p className="mt-1 text-sm text-[#66758a]">Semua temuan di bawah dibaca terhadap profil resort kita sendiri, bukan hanya dibandingkan antar-kompetitor.</p>
+            </div>
+            <a href={sanghyangProfile.officialUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#1b6c68] underline">Buka profil resmi</a>
+          </div>
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+            <div><span className="text-[#66758a]">Reputasi publik</span><p className="font-semibold">{sanghyangProfile.rating} · {sanghyangProfile.reviewCount}</p></div>
+            <div><span className="text-[#66758a]">F&B</span><p className="font-semibold">{sanghyangProfile.foodAndBeverage.join(", ")}</p></div>
+            <div><span className="text-[#66758a]">Keunggulan</span><p className="font-semibold">Spa air panas, beach access, watersport, meeting room</p></div>
+          </div>
+          <p className="mt-2 text-xs text-[#66758a]">Snapshot publik; angka rating dan ulasan dapat berubah.</p>
         </section>
         {error && (
           <div
