@@ -232,6 +232,11 @@ Jangan pakai `gemini-2.5-flash-lite`: masih terdaftar tapi membalas 404.
 mengunci seluruh aplikasi (semua halaman dan semua `/api/*` dijawab 503). Fail-closed
 disengaja: salah setel di dashboard tidak boleh berarti pintu terbuka untuk umum.
 
+`CRON_SECRET` — secret wajib untuk cron scraping berita. Vercel Cron atau scheduler
+lain harus memanggil `GET /api/cron/scrape` dengan header `Authorization: Bearer <CRON_SECRET>`.
+Endpoint ini fail-closed bila secret kosong/salah, memakai lock database yang sama dengan
+scrape admin, dan mengembalikan status aman tanpa membocorkan detail error.
+
 ### ⚠️ Kenapa aplikasi ini dijalankan LOKAL, bukan di-deploy
 
 **Keputusan: dipakai lokal lewat `Jalankan Sanghyang.bat`. Vercel dibiarkan
@@ -298,6 +303,7 @@ Environment variable yang harus diisi di dashboard Vercel:
 | `GEMINI_API_KEY` | kunci Gemini |
 | `GEMINI_MODEL` | opsional — kosongkan untuk `gemini-3.5-flash-lite` |
 | `APP_PASSWORD` | sandi bersama |
+| `CRON_SECRET` | secret Bearer untuk Vercel Cron scraping berita |
 | `PUPPETEER_SKIP_DOWNLOAD` | `true` |
 
 **Batas Hobby yang perlu disadari:** merangkum makan 10–39 detik per artikel dan

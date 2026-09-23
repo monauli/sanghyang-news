@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { NAMA_COOKIE, tokenSah } from '@/lib/sandi';
 
-const TERBUKA = ['/login', '/api/login'];
+const TERBUKA = ['/login', '/api/login', '/api/cron/scrape'];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
