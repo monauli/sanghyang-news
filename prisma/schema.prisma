@@ -147,8 +147,13 @@ model Competitor {
   instagramUrl   String?
   facebookUrl    String?
   tiktokUrl      String?
-  location       String?
-  bookingUrl     String?
+    location       String?
+    rating         Decimal?                  @db.Decimal(3, 2)
+    reviewCount    Int?
+    ratingSource   String?
+    ratingSourceUrl String?
+    ratingObservedAt DateTime?
+    bookingUrl     String?
   socialUrl      String?
   active         Boolean                   @default(true)
   notes          String?

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     db.competitorReview.findMany({ orderBy: { reviewDate: 'desc' } }),
   ]);
   const rows: SummaryRow[] = [
-    ...competitors.map((x) => ({ date: x.updatedAt.toISOString(), category: 'Competitors', source: 'Competitor registry', headline: `${x.name} · ${x.location ?? 'Anyer–Carita–Cilegon'}`, sentiment: 'neutral' as const })),
+    ...competitors.map((x) => ({ date: (x.ratingObservedAt ?? x.updatedAt).toISOString(), category: 'Competitors', source: x.ratingSource ?? 'Competitor registry', headline: `${x.name} · ${x.location ?? 'Anyer–Carita–Cilegon'}${x.rating == null ? '' : ` · ${Number(x.rating).toFixed(1)}/5 · ${x.reviewCount?.toLocaleString('id-ID') ?? '?'} ulasan`}`, sentiment: 'neutral' as const })),
     ...items.map((x) => ({ date: x.createdAt.toISOString(), category: x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : x.kind === 'entertainment' ? 'Entertainment' : 'Destinations', source: 'Market news', headline: x.description ?? x.targetAudience ?? 'New market intelligence item', sentiment: 'positive' as const })),
     ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, headline: `${x.roomName ?? x.packageName ?? 'Rate'} observed at ${x.price}`, sentiment: 'neutral' as const })),
     ...promotions.map((x) => ({ date: x.capturedAt.toISOString(), category: 'Promotions', source: x.source, headline: x.title, sentiment: 'neutral' as const })),
