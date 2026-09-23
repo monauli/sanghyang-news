@@ -18,6 +18,7 @@ const tabs = [
   "Overview",
   "F&B",
   "Events",
+  "Entertainment",
   "Competitors",
   "Promotions",
   "Reviews",
@@ -25,6 +26,7 @@ const tabs = [
 const colors: Record<string, string> = {
   fnb: "#118a8c",
   event: "#172b4d",
+  entertainment: "#8a5a9c",
   competitors: "#ccb89e",
   promotions: "#ef6658",
   reviews: "#78b1e2",
@@ -181,6 +183,7 @@ export default function MarketIntelligencePage() {
             <option value="all">All segments</option>
             <option value="fnb">F&B</option>
             <option value="event">Events</option>
+            <option value="entertainment">Entertainment</option>
             <option value="destination">Destinations</option>
             <option value="competitor">Competitors</option>
             <option value="promotion">Promotions</option>
@@ -233,6 +236,7 @@ export default function MarketIntelligencePage() {
                 {[
                   ["F&B mentions", "fnb"],
                   ["Event mentions", "events"],
+                  ["Entertainment mentions", "entertainment"],
                   ["Competitor updates", "competitors"],
                   ["Promotion mentions", "promotions"],
                   ["Customer reviews", "reviews"],

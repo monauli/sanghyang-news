@@ -4,7 +4,7 @@ import { marketItemRepository } from "@/lib/market/market-item-repository";
 import type { MarketItemKind } from "@/lib/db-types";
 import { NAMA_COOKIE, tokenSah } from "@/lib/sandi";
 
-const kinds = new Set(["fnb", "event", "destination"]);
+const kinds = new Set(["fnb", "event", "entertainment", "destination"]);
 const isoDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 export async function GET(request: Request) {

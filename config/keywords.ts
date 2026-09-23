@@ -10,7 +10,7 @@ export const LOC_KECIL = ['Anyer', 'Carita', 'Cinangka', 'Cikoneng'];
 
 // Lokasi besar: WAJIB dipasangkan topik, kalau tidak hasilnya mentok batas 100 & generik
 export const LOC_BESAR = ['Serang', 'Cilegon', 'Banten'];
-export const TOPIK_QUERY = ['wisata', 'hotel', 'investasi', 'pariwisata', 'festival'];
+export const TOPIK_QUERY = ['wisata', 'hotel', 'investasi', 'pariwisata', 'festival', 'entertainment'];
 
 // 4 + (3 × 5) = 19 query
 export const QUERIES = [
@@ -72,7 +72,7 @@ export const W_EKONOMI: WeightGroup = {
 
 export const W_ACARA: WeightGroup = {
   score: 3,
-  words: ['festival', 'event', 'pameran', 'expo', 'pesta laut', 'karnaval', 'gelaran'],
+  words: ['festival', 'event', 'pameran', 'expo', 'pesta laut', 'karnaval', 'gelaran', 'konser', 'live music', 'hiburan', 'entertainment', 'atraksi', 'pertunjukan', 'wahana', 'nightlife'],
 };
 
 export const W_PEJABAT: WeightGroup = {

@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const kpis = [
     ["F&B mentions", counts.fnb ?? 0, "text-[#2c8a83]"],
     ["Event mentions", counts.events ?? 0, "text-[#4b6f9f]"],
+    ["Entertainment", counts.entertainment ?? 0, "text-[#8a5a9c]"],
     ["Competitor updates", counts.competitors ?? 0, "text-[#9c6b9a]"],
     ["Reviews", counts.reviews ?? 0, "text-[#c78d55]"],
   ];
@@ -62,7 +63,7 @@ export default function DashboardPage() {
             Open Intelligence
           </a>
         </header>
-        <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {kpis.map(([label, value, color]) => (
             <div
               key={label}

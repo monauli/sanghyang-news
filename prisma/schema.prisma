@@ -33,6 +33,7 @@ enum ArticleStatus {
 enum MarketItemKind {
   fnb
   event
+  entertainment
   destination
 }
 

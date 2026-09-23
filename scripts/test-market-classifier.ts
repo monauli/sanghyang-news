@@ -3,7 +3,8 @@ import { classifyArticle, fallbackClassification, CLASSIFIER_TIMEOUT_MS } from "
 import { handle } from "../app/api/market-intelligence/enrich/route";
 import { NAMA_COOKIE, tokenDari } from "../lib/sandi";
 void (async () => {
-  assert.equal(fallbackClassification({ title: "Festival keluarga", text: "Acara event" }).kind, "event");
+assert.equal(fallbackClassification({ title: "Festival keluarga", text: "Acara event" }).kind, "event");
+assert.equal(fallbackClassification({ title: "Konser live music", text: "Hiburan dan entertainment" }).kind, "entertainment");
   const ai = await classifyArticle({ title: "Kuliner", text: "restoran baru" }, async () => JSON.stringify({ kind: "fnb", tags: ["food"], targetAudience: "families", relevanceScore: 140, description: "desc" }));
   assert.equal(ai.kind, "fnb"); assert.equal(ai.relevanceScore, 100); assert.equal(ai.targetAudience, "families");
   assert.equal((await classifyArticle({ title: "Destinasi", text: "pantai" }, async () => { throw new Error("offline"); })).kind, "destination");
