@@ -7,8 +7,11 @@ const repo = createCompetitorRepository({
   competitor: {
     create: async ({ data }) => { competitors.push(data as Record<string, unknown>); return data; },
     findMany: async ({ where }) => competitors.filter((item) => !where || Object.entries(where).every(([key, value]) => item[key] === value)),
-    update: async ({ data }) => data,
-    delete: async ({ where }) => where,
+    update: async ({ where, data }) => {
+      const item = competitors.find((candidate) => candidate.id === where.id) ?? competitors[0];
+      Object.assign(item, data);
+      return item;
+    },
   },
   competitorPriceSnapshot: {
     create: async ({ data }) => { snapshots.push(data as Record<string, unknown>); return data; },
@@ -22,6 +25,9 @@ async function main() {
   assert.equal((await repo.listCompetitors(true)).length, 1);
   assert.equal((await repo.listPriceSnapshots("c1")).length, 1);
   assert.equal(snapshots[0].price, 1250000);
+  await repo.deleteCompetitor("c1");
+  assert.equal(competitors[0].active, false);
+  assert.equal(snapshots.length, 1);
   console.log("competitor checks passed");
 }
 void main();
