@@ -1,0 +1,18 @@
+name: News scrape
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger production scraper
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 360 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://sanghyang-news.vercel.app/api/cron/scrape"

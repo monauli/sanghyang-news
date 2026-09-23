@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
-  "crons": [{ "path": "/api/cron/scrape", "schedule": "0 0 * * *" }],
+  "crons": [],
   "functions": {
     "app/api/cron/scrape/route.ts": { "maxDuration": 300 },
     "app/api/search/route.ts": { "maxDuration": 60 },
