@@ -16,6 +16,8 @@ type Summary = {
     sentiment: string;
   }[];
   trend: Record<string, number[]>;
+  comparison: { name: string; rating: number; reviewCount: number; difference: number; source: string; sourceUrl?: string }[];
+  sanghyang: { rating: number; reviewCount: number };
 };
 const tabs = [
   "Overview",
@@ -227,6 +229,24 @@ export default function MarketIntelligencePage() {
             <div><span className="text-[#66758a]">Keunggulan</span><p className="font-semibold">Spa air panas, beach access, watersport, meeting room</p></div>
           </div>
           <p className="mt-2 text-xs text-[#66758a]">Snapshot publik; angka rating dan ulasan dapat berubah.</p>
+        </section>
+        <section className="mb-4 rounded-lg border bg-white p-5">
+          <h2 className="text-xl font-semibold">Posisi reputasi dibanding kompetitor</h2>
+          <p className="mt-1 text-sm text-[#66758a]">Diurutkan dari jumlah ulasan terbanyak. Selisih rating dihitung terhadap Sanghyang ({data?.sanghyang.rating ?? 4.4}/5).</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-[#f4f7fa]"><tr>{["Resort", "Rating", "Ulasan", "Posisi vs Sanghyang", "Sumber"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
+              <tbody className="divide-y">
+                <tr className="bg-[#f4fbe9]"><td className="px-3 py-3 font-semibold">Sanghyang</td><td className="px-3 py-3 font-semibold">{data?.sanghyang.rating ?? 4.4}/5</td><td className="px-3 py-3">{(data?.sanghyang.reviewCount ?? 2909).toLocaleString("id-ID")}</td><td className="px-3 py-3">Baseline</td><td className="px-3 py-3">Profil resmi</td></tr>
+                {(data?.comparison ?? []).map((x) => <tr key={x.name}><td className="px-3 py-3">{x.sourceUrl ? <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="text-[#1b6c68] underline">{x.name}</a> : x.name}</td><td className="px-3 py-3">{x.rating.toFixed(1)}/5</td><td className="px-3 py-3">{x.reviewCount.toLocaleString("id-ID")}</td><td className={`px-3 py-3 font-medium ${x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference > 0 ? `Sanghyang kurang ${x.difference.toFixed(1)} poin` : x.difference < 0 ? `Sanghyang unggul ${Math.abs(x.difference).toFixed(1)} poin` : "Setara"}</td><td className="px-3 py-3 text-[#66758a]">{x.source}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section className="mb-4 rounded-lg border bg-white p-5">
+          <h2 className="text-xl font-semibold">Perbandingan harga</h2>
+          <p className="mt-1 text-sm text-[#66758a]">Harga hanya valid jika dibandingkan pada tanggal menginap, jumlah malam, tipe kamar, jumlah tamu, dan mata uang yang sama.</p>
+          <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Snapshot harga otomatis akan menampilkan: <strong>check-in/check-out · tipe kamar · 2 dewasa · harga per malam · harga total · promo · sumber</strong>. Saat ini belum ada snapshot harga yang seragam, jadi sistem tidak menampilkan angka yang berpotensi menyesatkan.</div>
         </section>
         {error && (
           <div

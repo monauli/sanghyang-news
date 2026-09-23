@@ -25,7 +25,13 @@ export async function GET(request: Request) {
     ...promotions.map((x) => ({ date: x.capturedAt.toISOString(), category: 'Promotions', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: x.title, relevance: 'Bandingkan mekanisme promo, periode, dan penawarannya dengan Sanghyang.', sentiment: 'neutral' as const })),
     ...reviews.map((x) => ({ date: x.capturedAt.toISOString(), reviewDate: x.reviewDate.toISOString(), category: 'Reviews', source: x.source, sourceUrl: x.sourceUrl, headline: x.text, relevance: 'Gunakan pujian dan keluhan pelanggan sebagai acuan perbaikan layanan Sanghyang.', sentiment: x.sentiment as SummaryRow['sentiment'] })),
   ].filter((row) => !source || row.source === source).filter((row) => segment === 'all' || ({ fnb: 'F&B', event: 'Events', entertainment: 'Entertainment', destination: 'Destinations', competitor: 'Competitors', promotion: 'Promotions', review: 'Reviews' } as Record<string, string>)[segment] === row.category);
-  return NextResponse.json(transformMarketSummary({ rows, competitors: competitors.length, marketItems: items.length, period }));
+  const summary = transformMarketSummary({ rows, competitors: competitors.length, marketItems: items.length, period });
+  const sanghyangRating = 4.4;
+  const comparison = competitors
+    .filter((x) => x.rating != null && x.reviewCount != null)
+    .map((x) => ({ name: x.name, rating: Number(x.rating), reviewCount: x.reviewCount ?? 0, difference: Number((Number(x.rating) - sanghyangRating).toFixed(1)), source: x.ratingSource ?? 'Public source', sourceUrl: x.ratingSourceUrl ?? undefined }))
+    .sort((a, b) => b.reviewCount - a.reviewCount);
+  return NextResponse.json({ ...summary, comparison, sanghyang: { rating: sanghyangRating, reviewCount: 2909 } });
 }
 
 export function validateSummaryParams(period: string, segment: string, source: string | null) {
