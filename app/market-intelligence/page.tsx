@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { sanghyangProfile } from "@/lib/market/sanghyang-profile";
+import { comparisonProfiles } from "@/lib/market/competitor-comparison";
 type Period = "30d" | "90d" | "year";
 type Summary = {
   counts: Record<string, number>;
@@ -229,6 +230,25 @@ export default function MarketIntelligencePage() {
             <div><span className="text-[#66758a]">Keunggulan</span><p className="font-semibold">Spa air panas, beach access, watersport, meeting room</p></div>
           </div>
           <p className="mt-2 text-xs text-[#66758a]">Snapshot publik; angka rating dan ulasan dapat berubah.</p>
+        </section>
+        <section className="mb-4 rounded-lg border bg-white p-5">
+          <h2 className="text-xl font-semibold">Matriks produk dan pengalaman</h2>
+          <p className="mt-1 text-sm text-[#66758a]">Perbandingan ini menjawab: siapa yang punya kamar, F&B, fasilitas, dan aktivitas/event yang paling relevan untuk tamu Sanghyang.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="bg-[#f4f7fa]"><tr>{["Resort", "Kamar", "F&B", "Fasilitas", "Event & entertainment"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
+              <tbody className="divide-y">
+                {comparisonProfiles.map((x, i) => <tr key={x.name} className={i === 0 ? "bg-[#f4fbe9]" : ""}>
+                  <td className="px-3 py-3 align-top font-semibold"><a href={x.sourceUrl} target="_blank" rel="noreferrer" className="text-[#1b6c68] underline">{x.name}</a></td>
+                  <td className="px-3 py-3 align-top">{x.rooms}</td>
+                  <td className="px-3 py-3 align-top">{x.foodAndBeverage}</td>
+                  <td className="px-3 py-3 align-top">{x.facilities}</td>
+                  <td className="px-3 py-3 align-top">{x.eventsEntertainment}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-[#66758a]">Sumber setiap baris dapat dibuka dari nama resort. Data ini adalah snapshot halaman publik, bukan audit operasional langsung.</p>
         </section>
         <section className="mb-4 rounded-lg border bg-white p-5">
           <h2 className="text-xl font-semibold">Posisi reputasi dibanding kompetitor</h2>
