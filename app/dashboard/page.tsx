@@ -29,7 +29,7 @@ export default function DashboardPage() {
   ];
   return (
     <main className="min-h-screen bg-[#f7f9f8] text-[#183334] lg:flex">
-      <aside className="w-full bg-[#226e6b] px-6 py-7 text-white lg:min-h-screen lg:w-64">
+      <aside className="w-full bg-[#132840] px-6 py-7 text-white lg:min-h-screen lg:w-64">
         <div className="text-2xl font-bold tracking-tight">Sanghyang</div>
         <p className="mt-1 text-sm text-white/70">Management workspace</p>
         <nav className="mt-12 space-y-2" aria-label="Dashboard navigation">

@@ -119,7 +119,7 @@ export default function MarketIntelligencePage() {
   };
   return (
     <div className="min-h-screen bg-[#f7f9f8] text-[#183334] lg:flex">
-      <aside className="w-full bg-[#226e6b] px-5 py-6 text-white lg:min-h-screen lg:w-[220px]">
+      <aside className="w-full bg-[#132840] px-5 py-6 text-white lg:min-h-screen lg:w-[220px]">
         <div className="mb-12 text-[21px] font-semibold">
           Sanghyang Resort
           <small className="block text-sm font-normal text-slate-300">
