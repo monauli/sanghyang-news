@@ -7,13 +7,19 @@ export type GenerateClassification = (prompt: string) => Promise<string>;
 export const CLASSIFIER_TIMEOUT_MS = 8_000;
 const kinds = new Set<MarketItemKind>(["fnb", "event", "entertainment", "destination"]);
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
+const marketTerms = /\b(?:hotel|resort|villa|cottage|penginapan|akomodasi|wisata|pariwisata|destinasi|pantai|beach|spa|kolam renang|water ?sport|watersport|travel|tourism|mice|meeting|wedding|outbound|staycation|liburan|rekreasi|restaurant|restoran|cafe|kafe|kuliner|menu|chef|food|festival|pameran|konser|live music|hiburan|entertainment|pertunjukan|wahana|promo|diskon|paket menginap)\b/;
+const targetAreaTerms = /\b(?:anyer|carita|cinangka|cikoneng|serang|cilegon|pandeglang)\b/;
+export function isMarketRelevant(input: ClassifierInput) {
+  const title = input.title.toLowerCase().split(/\s+-\s+/)[0];
+  return targetAreaTerms.test(title) && marketTerms.test(`${title} ${input.text}`.toLowerCase());
+}
 export function fallbackClassification(input: ClassifierInput): Classification {
   const text = `${input.title} ${input.text}`.toLowerCase();
   const event = /event|festival|pameran|acara|workshop|agenda/.test(text);
   const entertainment = /entertainment|hiburan|konser|live music|atraksi|pertunjukan|wahana|nightlife|rekreasi/.test(text);
   const fnb = /restaurant|restoran|cafe|kafe|kuliner|makan|menu|chef|food/.test(text);
   const kind: MarketItemKind = event ? "event" : entertainment ? "entertainment" : fnb ? "fnb" : "destination";
-  return { kind, tags: [kind], targetAudience: event ? "travellers and event seekers" : entertainment ? "leisure and entertainment seekers" : fnb ? "food and leisure travellers" : "leisure travellers", relevanceScore: 50 };
+  return { kind, tags: [kind], targetAudience: event ? "travellers and event seekers" : entertainment ? "leisure and entertainment seekers" : fnb ? "food and leisure travellers" : "leisure travellers", relevanceScore: isMarketRelevant(input) ? 50 : 0 };
 }
 function validate(value: unknown, fallback: Classification): Classification {
   const object = value && typeof value === "object" ? value as Record<string, unknown> : {};

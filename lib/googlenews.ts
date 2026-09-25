@@ -23,6 +23,8 @@ export type RawArticle = {
 export type QueryStat = { query: string; count: number; capped: boolean; error?: string };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const QUERY_TIMEOUT_MS = 10_000;
+const QUERY_CONCURRENCY = 3;
 
 function timeout(ms: number) {
   const c = new AbortController();
@@ -71,7 +73,7 @@ export function parseRss(xml: string): Omit<RawArticle, 'query'>[] {
 export async function fetchQuery(q: string, after: string, before: string): Promise<RawArticle[]> {
   const enc = encodeURIComponent(`${q} after:${after} before:${before}`);
   const url = `https://news.google.com/rss/search?q=${enc}&hl=id&gl=ID&ceid=ID:id`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: timeout(15000) });
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: timeout(QUERY_TIMEOUT_MS) });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return parseRss(await res.text()).map((it) => ({ ...it, query: q }));
 }
@@ -90,17 +92,19 @@ export async function searchAll(
   const stats: QueryStat[] = [];
   let articles: RawArticle[] = [];
 
-  // Sekuensial + jeda 200ms: Google tidak suka 19 request sekaligus.
-  for (const q of QUERIES) {
-    try {
-      const items = await fetchQuery(q, dateFrom, before);
-      articles = articles.concat(items);
-      stats.push({ query: q, count: items.length, capped: items.length >= 100 });
-    } catch (e) {
-      // Satu query gagal tidak menggagalkan sisanya.
-      stats.push({ query: q, count: 0, capped: false, error: (e as Error).message });
-    }
-    onProgress?.(stats.length, QUERIES.length);
+  // Tiga request paralel menjaga waktu maksimum tetap masuk akal tanpa membanjiri Google.
+  for (let i = 0; i < QUERIES.length; i += QUERY_CONCURRENCY) {
+    await Promise.all(QUERIES.slice(i, i + QUERY_CONCURRENCY).map(async (q) => {
+      try {
+        const items = await fetchQuery(q, dateFrom, before);
+        articles = articles.concat(items);
+        stats.push({ query: q, count: items.length, capped: items.length >= 100 });
+      } catch (e) {
+        // Satu query gagal tidak menggagalkan sisanya.
+        stats.push({ query: q, count: 0, capped: false, error: (e as Error).message });
+      }
+      onProgress?.(stats.length, QUERIES.length);
+    }));
     await sleep(200);
   }
 

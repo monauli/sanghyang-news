@@ -1,5 +1,6 @@
 import type { NewArticle } from "./normalize";
 import { dedupeKey, normalizeUrl } from "./normalize";
+import { fallbackClassification, isMarketRelevant } from "./classifier";
 
 export type SaveArticleResult = { saved: boolean; duplicate: boolean; articleId: string };
 
@@ -31,13 +32,33 @@ export function createArticleRepository(client: ArticleRepositoryClient) {
       });
       if (byFingerprint) return { saved: false, duplicate: true, articleId: byFingerprint.id };
 
-      const saved = await client.article.create({ data: { ...article, canonicalUrl, contentHash: fingerprint } });
-      return { saved: true, duplicate: false, articleId: saved.id };
+      try {
+        const saved = await client.article.create({ data: { ...article, canonicalUrl, contentHash: fingerprint } });
+        return { saved: true, duplicate: false, articleId: saved.id };
+      } catch (error) {
+        if ((error as { code?: string }).code !== "P2002") throw error;
+        const existing = await client.article.findUnique({ where: { canonicalUrl } });
+        if (!existing) throw error;
+        return { saved: false, duplicate: true, articleId: existing.id };
+      }
     },
   };
 }
 
 export async function saveArticle(article: NewArticle): Promise<SaveArticleResult> {
   const { db } = await import("../db");
-  return createArticleRepository(db).saveArticle(article);
+  const result = await createArticleRepository(db).saveArticle(article);
+  if (result.saved) {
+    // ponytail: local classification keeps the nightly batch bounded; use the manual enrich route for Gemini detail.
+    const classificationInput = { title: article.title, text: article.content ?? article.description ?? "" };
+    if (!isMarketRelevant(classificationInput)) return result;
+    const classification = fallbackClassification(classificationInput);
+    const location = ["anyer", "carita", "cinangka", "cikoneng", "serang", "cilegon", "banten"].find((x) => `${article.title} ${article.description ?? ""}`.toLowerCase().includes(x)) ?? null;
+    await db.marketItem.upsert({
+      where: { articleId: result.articleId },
+      create: { articleId: result.articleId, kind: classification.kind, location, description: classification.description ?? article.description ?? null, targetAudience: classification.targetAudience, relevanceScore: classification.relevanceScore, tags: classification.tags },
+      update: { kind: classification.kind, location, description: classification.description ?? article.description ?? null, targetAudience: classification.targetAudience, relevanceScore: classification.relevanceScore, tags: classification.tags },
+    });
+  }
+  return result;
 }

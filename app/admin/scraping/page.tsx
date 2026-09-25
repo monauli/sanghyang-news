@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 type Source = {
   id: string;
@@ -46,6 +47,7 @@ export default function HalamanAdminScraping() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
+  const [runStartedAfter, setRunStartedAfter] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -79,16 +81,20 @@ export default function HalamanAdminScraping() {
     if (!runId) return;
     const interval = window.setInterval(() => {
       void load().then((next) => {
-        const run = next?.runs.find((item) => item.id === runId);
+        const run = runId === "pending"
+          ? next?.runs.find((item) => new Date(item.startedAt).getTime() >= runStartedAfter)
+          : next?.runs.find((item) => item.id === runId);
+        if (runId === "pending" && run) setRunId(run.id);
         if (run && run.status !== "running") setRunId(null);
       });
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [load, runId]);
+  }, [load, runId, runStartedAfter]);
 
   async function runNewsNow() {
     setStarting(true);
     setError(null);
+    setRunStartedAfter(Date.now());
     try {
       const response = await fetch("/api/admin/scraping", {
         method: "POST",
@@ -122,11 +128,11 @@ export default function HalamanAdminScraping() {
     <div className="min-h-screen bg-[#f7f9f8] lg:flex">
       <aside className="w-full bg-[#132840] px-6 py-7 text-white lg:min-h-screen lg:w-64">
         <a href="/dashboard" className="text-2xl font-bold tracking-tight">Sanghyang</a>
-        <p className="mt-1 text-sm text-white/70">Management workspace</p>
+        <p className="mt-1 text-sm text-white/70">Ruang kerja pemasaran</p>
         <nav className="mt-12 space-y-2" aria-label="Navigasi utama">
           <a href="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Dashboard</a>
-          <a href="/" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Newsletter</a>
-          <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Market Intelligence</a>
+          <Link href="/" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Newsletter</Link>
+          <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Insight Pasar</a>
         </nav>
       </aside>
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
@@ -149,7 +155,7 @@ export default function HalamanAdminScraping() {
             ? "Menjalankan…"
             : polling
               ? "Sedang berjalan…"
-              : "Run News Now"}
+              : "Ambil Berita Terbaru"}
         </button>
       </div>
 
@@ -168,7 +174,7 @@ export default function HalamanAdminScraping() {
           <>
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-semibold text-green-900">
-                Status sumber
+                Sumber berita
               </h2>
               {status.sources.length ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -213,7 +219,7 @@ export default function HalamanAdminScraping() {
 
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-semibold text-green-900">
-                Pengambilan terbaru
+                Pembaruan terakhir
               </h2>
               {!latestRun ? (
                 <p className="mt-4 text-sm text-gray-500">
@@ -229,27 +235,27 @@ export default function HalamanAdminScraping() {
                   </p>
                   <dl className="mt-4 grid gap-2 sm:grid-cols-4">
                     <div>
-                      <dt className="text-gray-500">Ditemukan</dt>
+                      <dt className="text-gray-500">Berita ditemukan</dt>
                       <dd className="font-semibold">
-                        Ditemukan: {latestRun.recordsDiscovered}
+                        {latestRun.recordsDiscovered}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Disimpan</dt>
+                      <dt className="text-gray-500">Berita baru</dt>
                       <dd className="font-semibold">
-                        Disimpan: {latestRun.recordsSaved}
+                        {latestRun.recordsSaved}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Duplikat</dt>
+                      <dt className="text-gray-500">Sudah ada</dt>
                       <dd className="font-semibold">
-                        Duplikat: {latestRun.duplicates}
+                        {latestRun.duplicates}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Kesalahan</dt>
+                      <dt className="text-gray-500">Gagal diproses</dt>
                       <dd className="font-semibold">
-                        Kesalahan: {latestRun.errors}
+                        {latestRun.errors}
                       </dd>
                     </div>
                   </dl>

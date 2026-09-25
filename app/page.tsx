@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import StepIndicator from "./components/StepIndicator";
 import { KUNCI } from "@/lib/ui";
@@ -122,11 +123,11 @@ export default function Halaman1() {
     <div className="min-h-screen bg-[#f7f9f8] lg:flex">
       <aside className="w-full bg-[#132840] px-6 py-7 text-white lg:min-h-screen lg:w-64">
         <a href="/dashboard" className="text-2xl font-bold tracking-tight">Sanghyang</a>
-        <p className="mt-1 text-sm text-white/70">Management workspace</p>
+            <p className="mt-1 text-sm text-white/70">Ruang kerja pemasaran</p>
         <nav className="mt-12 space-y-2" aria-label="Navigasi utama">
           <a href="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Dashboard</a>
-          <a href="/" className="block rounded-xl bg-[#b7ff67] px-4 py-3 text-sm font-semibold text-[#1d5c50]">Newsletter</a>
-          <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Market Intelligence</a>
+          <Link href="/" className="block rounded-xl bg-[#b7ff67] px-4 py-3 text-sm font-semibold text-[#1d5c50]">Newsletter</Link>
+            <a href="/market-intelligence" className="block rounded-xl px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">Insight Pasar</a>
         </nav>
       </aside>
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-12">

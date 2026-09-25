@@ -2,6 +2,7 @@ import type { ScrapeRun, ScrapeRunStatus, Source } from "@/lib/db-types";
 import { NewsRunInProgressError, runNewsNow } from "@/lib/market/run-news";
 import { listRecentRuns } from "@/lib/market/scrape-log";
 import { getEnabledSources } from "@/lib/market/source-registry";
+import { after } from "next/server";
 
 type RunNewsNow = () => Promise<{ runId: string; status: ScrapeRunStatus }>;
 
@@ -74,7 +75,13 @@ export function createAdminScrapingHandlers({
         return Response.json({ error: "Body must be { job: 'news' }." }, { status: 400 });
       }
       try {
-        return Response.json(await start(), { status: 202 });
+        const task = start();
+        try {
+          after(async () => { await task.catch(() => undefined); });
+          return Response.json({ runId: "pending", status: "running" }, { status: 202 });
+        } catch {
+          return Response.json(await task, { status: 202 });
+        }
       } catch (error) {
         if (error instanceof NewsRunInProgressError) return Response.json({ error: error.message }, { status: 409 });
         throw error;

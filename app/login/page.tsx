@@ -41,7 +41,7 @@ export default function HalamanMasuk() {
             Sanghyang Resort
           </p>
           <h2 className="mt-5 text-5xl font-semibold leading-tight">
-            Intelligence for a stronger tomorrow.
+            Data pasar untuk keputusan yang lebih cepat.
           </h2>
           <p className="mt-6 text-lg leading-8 text-white/80">
             Berita, tren pasar, dan insight bisnis dalam satu ruang kerja.
@@ -55,7 +55,7 @@ export default function HalamanMasuk() {
             Sanghyang Highlights
           </p>
           <h1 className="mt-5 text-5xl font-light tracking-tight text-slate-800">
-            Welcome
+            Selamat datang
           </h1>
           <p className="mt-3 text-slate-500">Masuk untuk melanjutkan.</p>
 

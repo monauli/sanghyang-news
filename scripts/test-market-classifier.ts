@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import { classifyArticle, fallbackClassification, CLASSIFIER_TIMEOUT_MS } from "../lib/market/classifier";
+import { classifyArticle, fallbackClassification, isMarketRelevant, CLASSIFIER_TIMEOUT_MS } from "../lib/market/classifier";
 import { handle } from "../app/api/market-intelligence/enrich/route";
 import { NAMA_COOKIE, tokenDari } from "../lib/sandi";
 void (async () => {
 assert.equal(fallbackClassification({ title: "Festival keluarga", text: "Acara event" }).kind, "event");
 assert.equal(fallbackClassification({ title: "Konser live music", text: "Hiburan dan entertainment" }).kind, "entertainment");
+assert.equal(isMarketRelevant({ title: "Berita saham", text: "Pasar modal dan emiten" }), false);
+assert.equal(fallbackClassification({ title: "Berita saham", text: "Pasar modal dan emiten" }).relevanceScore, 0);
+assert.equal(isMarketRelevant({ title: "Festival Anyer", text: "Acara wisata di Banten" }), true);
+assert.equal(isMarketRelevant({ title: "Festival di Jawa Barat", text: "Acara wisata" }), false);
   const ai = await classifyArticle({ title: "Kuliner", text: "restoran baru" }, async () => JSON.stringify({ kind: "fnb", tags: ["food"], targetAudience: "families", relevanceScore: 140, description: "desc" }));
   assert.equal(ai.kind, "fnb"); assert.equal(ai.relevanceScore, 100); assert.equal(ai.targetAudience, "families");
   assert.equal((await classifyArticle({ title: "Destinasi", text: "pantai" }, async () => { throw new Error("offline"); })).kind, "destination");

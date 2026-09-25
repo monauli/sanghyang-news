@@ -57,18 +57,22 @@ export function createRunNews(dependencies: RunNewsDependencies) {
       try {
         const articles = await dependencies.scrape({ source, runId: run.id }, record);
         discovered = articles.length;
-        for (const article of articles) {
-          try {
-            const savedArticle = await dependencies.saveArticle({
-              sourceId: source.id, title: article.title, canonicalUrl: article.canonicalUrl,
-              normalizedTitle: normalizeTitle(article.title), publishedAt: article.publishedAt,
-              description: article.description, content: article.content, imageUrl: article.imageUrl,
-            });
-            saved += Number(savedArticle.saved);
-            duplicates += Number(savedArticle.duplicate);
-          } catch (error) {
-            await record({ stage: "persist", url: article.canonicalUrl, message: messageOf(error) });
-          }
+        // ponytail: small batches avoid hundreds of sequential DB round-trips without
+        // flooding the database; increase only if the nightly source set grows materially.
+        for (let i = 0; i < articles.length; i += 10) {
+          await Promise.all(articles.slice(i, i + 10).map(async (article) => {
+            try {
+              const savedArticle = await dependencies.saveArticle({
+                sourceId: source.id, title: article.title, canonicalUrl: article.canonicalUrl,
+                normalizedTitle: normalizeTitle(article.title), publishedAt: article.publishedAt,
+                description: article.description, content: article.content, imageUrl: article.imageUrl,
+              });
+              saved += Number(savedArticle.saved);
+              duplicates += Number(savedArticle.duplicate);
+            } catch (error) {
+              await record({ stage: "persist", url: article.canonicalUrl, message: messageOf(error) });
+            }
+          }));
         }
       } catch (error) {
         await record({ stage: "fetch", url: source.domain, message: messageOf(error) });

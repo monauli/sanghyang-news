@@ -14,7 +14,7 @@ export type GenerateInsights = (prompt: string) => Promise<string>;
 const fallback = (input: InsightInput): GeneratedInsight[] => {
   const top = input.rows[0];
   if (!top) return [];
-  return [{ type: "insight", title: "Market activity detected", summary: `${input.counts.marketItems ?? 0} market items and ${input.counts.reviews ?? 0} reviews are available for review.`, evidence: [top.headline.slice(0, 240)], sourceReferences: [top.source], priority: 50, confidence: 50, status: "active" }];
+  return [{ type: "insight", title: "Ada perkembangan pasar", summary: `${input.counts.marketItems ?? 0} temuan pasar dan ${input.counts.reviews ?? 0} ulasan tersedia untuk ditinjau.`, evidence: [top.headline.slice(0, 240)], sourceReferences: [top.source], priority: 50, confidence: 50, status: "active" }];
 };
 
 function validate(value: unknown, fallbackValue: GeneratedInsight[]): GeneratedInsight[] {
