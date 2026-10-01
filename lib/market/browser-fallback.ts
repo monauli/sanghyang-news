@@ -24,11 +24,39 @@ type Browser = {
 export type BrowserLauncher = () => Promise<Browser>;
 export type BrowserFallbackResult = { article: ScrapedArticle } | { error: ScrapeFailure };
 export type BrowserFallback = (url: string) => Promise<BrowserFallbackResult>;
+type Crawl4AIResponse = { markdown?: string; fit_markdown?: string; url?: string; metadata?: { title?: string } };
+type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 const cleanText = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 async function launchBrowser(): Promise<Browser> {
   return (await import("puppeteer")).launch({ headless: true });
+}
+
+const crawl4aiArticle = (payload: Crawl4AIResponse, url: string): ScrapedArticle | undefined => {
+  const content = payload.fit_markdown || payload.markdown || "";
+  const title = payload.metadata?.title || content.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  return title && content ? { title, canonicalUrl: payload.url || url, content } : undefined;
+};
+
+export function createCrawl4AIFallback({ endpoint = process.env.CRAWL4AI_URL, token = process.env.CRAWL4AI_API_TOKEN, fetcher = fetch }: { endpoint?: string; token?: string; fetcher?: Fetcher } = {}): BrowserFallback | undefined {
+  if (!endpoint) return undefined;
+  return async (url) => {
+    try {
+      const response = await fetcher(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!response.ok) throw new Error(`Crawl4AI returned ${response.status}`);
+      const article = crawl4aiArticle(await response.json() as Crawl4AIResponse, url);
+      if (!article) throw new Error("Crawl4AI tidak mengembalikan judul atau isi halaman.");
+      return { article };
+    } catch (error) {
+      return { error: { stage: "extract", url, message: (error as Error).message } };
+    }
+  };
 }
 
 async function guardBrowserRequests(page: BrowserPage, isSafe: (url: string) => Promise<boolean>) {
@@ -44,7 +72,12 @@ async function guardBrowserRequests(page: BrowserPage, isSafe: (url: string) => 
 }
 
 export function createBrowserFallback({ launch = launchBrowser, isSafe = alamatAman }: { launch?: BrowserLauncher; isSafe?: (url: string) => Promise<boolean> } = {}): BrowserFallback {
+  const crawl4ai = createCrawl4AIFallback();
   return async (url) => {
+    if (crawl4ai && await isSafe(url)) {
+      const result = await crawl4ai(url);
+      if ("article" in result) return result;
+    }
     let browser: Browser | undefined;
     let result: BrowserFallbackResult;
     try {

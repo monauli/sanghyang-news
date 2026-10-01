@@ -1,0 +1,8 @@
+services:
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    ports:
+      - "11235:11235"
+    shm_size: "1gb"
+    environment:
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?Set CRAWL4AI_API_TOKEN before starting Crawl4AI}

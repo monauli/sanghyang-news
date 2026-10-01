@@ -55,3 +55,6 @@ scripts/.h-*.html
 # Tangkapan layar pembanding tampilan — bukan bagian aplikasi
 tangkapan-layar/
 .playwright-mcp/
+
+# Graphify generated graph and caches (do not stage)
+/graphify-out/
