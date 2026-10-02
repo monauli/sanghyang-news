@@ -1,0 +1,61 @@
+name: Nightly market data scrape
+
+on:
+  schedule:
+    # 00:15 WIB (UTC+7). GitHub may start scheduled jobs a few minutes late.
+    - cron: "15 17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-market-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      CRAWL4AI_URL: http://127.0.0.1:8000
+      CRAWL4AI_API_TOKEN: ${{ secrets.CRAWL4AI_API_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Start Crawl4AI
+        run: docker compose -f docker-compose.crawl4ai.yml up -d --build
+
+      - name: Wait for Crawl4AI
+        shell: bash
+        run: |
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/health > /dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose -f docker-compose.crawl4ai.yml logs
+          exit 1
+
+      - name: Scrape news and market rates
+        run: npx tsx scripts/run-nightly-scrape.ts
+
+      - name: Stop Crawl4AI
+        if: always()
+        run: docker compose -f docker-compose.crawl4ai.yml down -v
