@@ -45,6 +45,31 @@ async function guardBrowserRequests(page: BrowserPage, isSafe: (url: string) => 
 
 export function createBrowserFallback({ launch = launchBrowser, isSafe = alamatAman }: { launch?: BrowserLauncher; isSafe?: (url: string) => Promise<boolean> } = {}): BrowserFallback {
   return async (url) => {
+    if (process.env.CRAWLER_SERVICE_URL) {
+      try {
+        const res = await fetch(`${process.env.CRAWLER_SERVICE_URL.replace(/\/+$/, '')}/crawl`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && !data.error && data.full_text) {
+            return {
+              article: {
+                title: data.title || '',
+                canonicalUrl: data.url || url,
+                content: data.full_text,
+                imageUrl: data.image_url || undefined,
+              },
+            };
+          }
+        }
+      } catch {
+        // fallback to puppeteer if crawler service is unreachable
+      }
+    }
+
     let browser: Browser | undefined;
     let result: BrowserFallbackResult;
     try {

@@ -24,7 +24,15 @@ type Run = {
   errors: number;
 };
 
-type Status = { sources: Source[]; runs: Run[] };
+type HotelRate = {
+  hotel: string;
+  price: number;
+  currency: string;
+  observedAt: string;
+  sourceUrl?: string;
+};
+
+type Status = { sources: Source[]; runs: Run[]; hotelRates?: HotelRate[] };
 
 const formatDate = (value: string | null) =>
   value
@@ -46,6 +54,7 @@ export default function HalamanAdminScraping() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [startingRates, setStartingRates] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [runStartedAfter, setRunStartedAfter] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -115,9 +124,27 @@ export default function HalamanAdminScraping() {
       const run = next?.runs.find((item) => item.id === runId);
       if (run && run.status !== "running") setRunId(null);
     } catch {
-      setError("Tidak dapat memulai pengambilan berita. Coba lagi.");
+      setError("Tidak dapat memulai pengambilan berita dan harga. Coba lagi.");
     } finally {
       setStarting(false);
+    }
+  }
+
+  async function runRatesNow() {
+    setStartingRates(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/scraping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job: "rates" }),
+      });
+      if (!response.ok) throw new Error();
+      await load();
+    } catch {
+      setError("Tidak dapat memperbarui harga hotel via Crawl4AI. Coba lagi.");
+    } finally {
+      setStartingRates(false);
     }
   }
 
@@ -139,24 +166,36 @@ export default function HalamanAdminScraping() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-green-900">
-            Pengambilan Berita
+            Pengambilan Berita &amp; Harga Pasar
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Pantau sumber dan jalankan pengambilan berita terbaru.
+            Pantau sumber dan perbarui berita pasar serta harga hotel Google Hotels via Crawl4AI.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void runNewsNow()}
-          disabled={loading || starting || polling}
-          className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-gray-300"
-        >
-          {starting
-            ? "Menjalankan…"
-            : polling
-              ? "Sedang berjalan…"
-              : "Ambil Berita Terbaru"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void runRatesNow()}
+            disabled={loading || starting || startingRates || polling}
+            className="rounded-lg border border-green-800 bg-white px-4 py-2.5 text-sm font-semibold text-green-900 hover:bg-green-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
+          >
+            {startingRates
+              ? "Crawl4AI Berjalan…"
+              : "Perbarui Harga Hotel (Crawl4AI)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runNewsNow()}
+            disabled={loading || starting || startingRates || polling}
+            className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            {starting
+              ? "Menjalankan…"
+              : polling
+                ? "Sedang berjalan…"
+                : "Ambil Berita Terbaru"}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -167,11 +206,75 @@ export default function HalamanAdminScraping() {
 
       {loading ? (
         <p className="rounded-lg border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-600">
-          Memuat status pengambilan berita…
+          Memuat status pengambilan data…
         </p>
       ) : (
         status && (
           <>
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-semibold text-green-900">
+                    Harga Pasar Hotel Terkini (Crawl4AI)
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Harga promo OTA terendah yang terlihat di Google Hotels (check-in 11 Okt, check-out 12 Okt 2026, 2 dewasa).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void runRatesNow()}
+                  disabled={loading || starting || startingRates || polling}
+                  className="rounded-lg bg-green-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  {startingRates ? "Memperbarui…" : "Refresh Harga"}
+                </button>
+              </div>
+
+              {status.hotelRates?.length ? (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-gray-200 bg-gray-50 text-gray-700">
+                      <tr>
+                        <th className="px-4 py-3">Hotel</th>
+                        <th className="px-4 py-3">Harga Terendah OTA</th>
+                        <th className="px-4 py-3">Terakhir Diperbarui</th>
+                        <th className="px-4 py-3">Sumber</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {status.hotelRates.map((hr) => (
+                        <tr key={hr.hotel} className={hr.hotel === "Sanghyang" ? "bg-[#f4fbe9]" : ""}>
+                          <td className="px-4 py-3 font-semibold text-gray-900">{hr.hotel}</td>
+                          <td className="px-4 py-3 font-semibold text-green-800">
+                            {hr.currency} {hr.price.toLocaleString("id-ID")}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{formatDate(hr.observedAt)}</td>
+                          <td className="px-4 py-3">
+                            {hr.sourceUrl ? (
+                              <a
+                                href={hr.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-green-700 underline"
+                              >
+                                Google Hotels
+                              </a>
+                            ) : (
+                              "Google Hotels"
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-gray-500">
+                  Belum ada data harga hotel tersimpan. Klik &ldquo;Perbarui Harga Hotel (Crawl4AI)&rdquo; di atas.
+                </p>
+              )}
+            </section>
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-semibold text-green-900">
                 Sumber berita

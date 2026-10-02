@@ -55,3 +55,19 @@ scripts/.h-*.html
 # Tangkapan layar pembanding tampilan — bukan bagian aplikasi
 tangkapan-layar/
 .playwright-mcp/
+
+# AI Agent scaffolding & memory
+.agents/
+graphify-out/
+
+# Python crawler virtualenv & caches
+crawler/.venv/
+crawler/**/__pycache__/
+crawler/**/.pytest_cache/
+*.pyc
+
+# Local database data & testing logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
