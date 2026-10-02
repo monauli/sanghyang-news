@@ -1,8 +1,7 @@
 services:
-  crawl4ai:
-    image: unclecode/crawl4ai:latest
+  sanghyang-crawler:
+    build:
+      context: ./crawler
     ports:
-      - "11235:11235"
+      - "8000:8000"
     shm_size: "1gb"
-    environment:
-      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?Set CRAWL4AI_API_TOKEN before starting Crawl4AI}

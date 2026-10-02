@@ -128,9 +128,9 @@ Merayap daftar URL secara paralel:
 
 ---
 
-## 4. Integrasi dengan Sanghyang Next.js (`lib/extractor.ts`)
+## 4. Integrasi dengan Sanghyang Next.js
 
-Jika env `CRAWLER_SERVICE_URL=http://localhost:8000` disetel di `.env.local`, backend Next.js pada route `/api/extract` dapat otomatis meneruskan pengambilan artikel ke service Crawl4AI ini, dengan fallback otomatis ke `@extractus/article-extractor` jika service tidak aktif.
+Jika env `CRAWL4AI_URL=http://localhost:8000` disetel di `.env.local`, backend Next.js dapat meneruskan pengambilan artikel dan harga hotel ke service Crawl4AI ini. Jika service tidak aktif, aplikasi tetap memakai fallback lokal yang tersedia.
 
 ---
 
