@@ -66,6 +66,24 @@ export default function MarketIntelligencePage() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState<string | null>(null);
   const [trendData, setTrendData] = useState<TrendData | null>(null), [trendLoading, setTrendLoading] = useState(true);
+  const [refreshingRates, setRefreshingRates] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshRates = async () => {
+    setRefreshingRates(true);
+    try {
+      await fetch("/api/admin/scraping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job: "rates" }),
+      });
+      setRefreshKey((k) => k + 1);
+    } catch {
+      // Ignored
+    } finally {
+      setRefreshingRates(false);
+    }
+  };
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -84,7 +102,7 @@ export default function MarketIntelligencePage() {
     return () => {
       live = false;
     };
-  }, [applied]);
+  }, [applied, refreshKey]);
   useEffect(() => {
     fetch("/api/market-intelligence/trends", { cache: "no-store" })
       .then(async (r) => { if (!r.ok) throw Error("Tren tidak tersedia"); return r.json(); })
@@ -220,8 +238,20 @@ export default function MarketIntelligencePage() {
         </section>}
         {(tab === "Ringkasan" || tab === "Kompetitor") && <>
         <section className="mb-4 rounded-lg border bg-white p-5">
-          <h2 className="text-xl font-semibold">Perbandingan harga pasar</h2>
-          <p className="mt-1 text-sm text-[#66758a]">Harga terendah yang terlihat di Google Hotels untuk pencarian yang sama: tanggal, 2 dewasa, dan mata uang IDR. Ini bukan jaminan tipe kamar atau paket yang identik.</p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Perbandingan harga pasar</h2>
+              <p className="mt-1 text-sm text-[#66758a]">Harga terendah yang terlihat di Google Hotels untuk pencarian yang sama: tanggal, 2 dewasa, dan mata uang IDR. Ini bukan jaminan tipe kamar atau paket yang identik.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refreshRates()}
+              disabled={refreshingRates}
+              className="rounded-lg border border-[#183334] px-3.5 py-2 text-xs font-semibold text-[#183334] hover:bg-[#183334] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {refreshingRates ? "Memperbarui via Crawl4AI…" : "Perbarui Harga Sekarang"}
+            </button>
+          </div>
           {data?.marketRateComparison?.length ? <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[860px] text-left text-sm"><thead className="bg-[#f4f7fa]"><tr>{["Hotel", "Tanggal menginap", "Tamu", "Harga terendah terlihat", "Selisih dari Sanghyang", "Sumber"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y">{data.marketRateComparison.map((x) => <tr key={`${x.hotel}-${x.checkIn}`} className={x.hotel === "Sanghyang" ? "bg-[#f4fbe9]" : ""}><td className="px-3 py-3 font-semibold">{x.hotel}</td><td className="px-3 py-3">{fmt(x.checkIn)} – {fmt(x.checkOut)}</td><td className="px-3 py-3">{x.guests} dewasa</td><td className="px-3 py-3">{x.currency} {x.price.toLocaleString("id-ID")}</td><td className={`px-3 py-3 font-semibold ${x.difference == null || x.difference === 0 ? "text-[#183334]" : x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference == null || x.difference === 0 ? "Patokan Sanghyang" : `${x.difference > 0 ? "+" : ""}${x.currency} ${x.difference.toLocaleString("id-ID")}`}</td><td className="px-3 py-3"><a className="text-[#1b6c68] underline" href={x.sourceUrl} target="_blank" rel="noreferrer">Google Hotels</a></td></tr>)}</tbody></table></div> : <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada harga pasar tersimpan.</div>}
         </section>
         <section className="mb-4 rounded-lg border border-[#b7ff67] bg-[#f4fbe9] p-4">
