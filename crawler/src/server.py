@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -18,6 +18,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def require_api_token(authorization: str | None = Header(default=None)) -> None:
+    """Protect crawl endpoints when a token is configured.
+
+    Local development remains convenient when no token is set. A public
+    deployment must set CRAWL4AI_API_TOKEN so the crawler cannot be used as
+    an open proxy by third parties.
+    """
+    if not settings.api_token:
+        return
+    expected = f"Bearer {settings.api_token}"
+    if authorization != expected:
+        raise HTTPException(status_code=401, detail="Token Crawl4AI tidak valid.")
 
 
 class CrawlRequest(BaseModel):
@@ -44,7 +58,7 @@ async def health_check():
     }
 
 
-@app.post("/crawl", response_model=CrawlArticleResult)
+@app.post("/crawl", response_model=CrawlArticleResult, dependencies=[Depends(require_api_token)])
 async def handle_crawl(req: CrawlRequest):
     """Crawl a single news article URL."""
     if not is_safe_url(req.url):
@@ -57,7 +71,7 @@ async def handle_crawl(req: CrawlRequest):
     return res
 
 
-@app.post("/crawl/batch", response_model=BatchCrawlResponse)
+@app.post("/crawl/batch", response_model=BatchCrawlResponse, dependencies=[Depends(require_api_token)])
 async def handle_crawl_batch(req: BatchCrawlRequest):
     """Crawl multiple news article URLs concurrently with rate limiting."""
     # Filter safe URLs

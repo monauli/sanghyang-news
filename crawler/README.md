@@ -88,6 +88,14 @@ Mengecek status kesehatan service:
 ```
 
 ### `POST /crawl`
+
+Jika `CRAWL4AI_API_TOKEN` diisi pada service, endpoint ini membutuhkan header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Endpoint `/health` tetap dapat dipanggil tanpa token untuk health check.
 Merayap satu URL artikel berita:
 ```json
 // Request
@@ -130,7 +138,9 @@ Merayap daftar URL secara paralel:
 
 ## 4. Integrasi dengan Sanghyang Next.js
 
-Jika env `CRAWL4AI_URL=http://localhost:8000` disetel di `.env.local`, backend Next.js dapat meneruskan pengambilan artikel dan harga hotel ke service Crawl4AI ini. Jika service tidak aktif, aplikasi tetap memakai fallback lokal yang tersedia.
+Jika env `CRAWL4AI_URL=http://localhost:8000` disetel di `.env.local`, backend Next.js dapat meneruskan pengambilan artikel dan harga hotel ke service Crawl4AI ini. Jika `CRAWL4AI_API_TOKEN` juga diisi, gunakan nilai token yang sama pada service Docker dan environment Next.js.
+
+Untuk server Docker sendiri yang diakses Vercel, service harus memiliki URL HTTPS publik, misalnya melalui reverse proxy/domain server. Jangan mengisi `CRAWL4AI_URL` di Vercel dengan `localhost`, `127.0.0.1`, atau alamat private LAN karena itu menunjuk ke server Vercel sendiri.
 
 ---
 

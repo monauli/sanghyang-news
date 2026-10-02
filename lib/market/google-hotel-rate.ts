@@ -114,12 +114,16 @@ export async function fetchGoogleHotelRate(url: string, context: Omit<GoogleHote
   const token = generateGoogleHotelToken(context.checkIn, context.checkOut, "IDR");
   const target = `${targetUrl}${targetUrl.includes("?") ? "&" : "?"}hl=id&checkin=${context.checkIn.toISOString().slice(0, 10)}&checkout=${context.checkOut.toISOString().slice(0, 10)}&adults=${context.guests}&ts=${token}&ap=MAE`;
   const crawlerUrl = process.env.CRAWL4AI_URL?.trim();
+  const crawlerToken = process.env.CRAWL4AI_API_TOKEN?.trim();
 
   if (crawlerUrl) {
     try {
       const response = await fetch(`${crawlerUrl}/crawl`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(crawlerToken ? { Authorization: `Bearer ${crawlerToken}` } : {}),
+        },
         body: JSON.stringify({ url: target, bypass_cache: true }),
       });
       if (response.ok) {

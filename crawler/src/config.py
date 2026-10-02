@@ -28,6 +28,9 @@ class CrawlerSettings(BaseModel):
     concurrency_limit: int = Field(
         default_factory=lambda: int(os.getenv("CRAWLER_CONCURRENCY", "4"))
     )
+    api_token: str = Field(
+        default_factory=lambda: os.getenv("CRAWL4AI_API_TOKEN", "").strip()
+    )
 
 
 settings = CrawlerSettings()
