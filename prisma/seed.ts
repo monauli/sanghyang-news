@@ -31,12 +31,6 @@ async function main() {
       create: { articleId: article.id, kind: item.kind, location: item.location, description: item.description, tags: [item.kind], targetAudience: "wisatawan dan keluarga", relevanceScore: 80 },
     });
   }
-  await db.competitorPromotion.upsert({
-    where: { id: "30000000-0000-4000-8000-000000000001" },
-    update: { title: "60 Seconds to Tokyo", category: "F&B", description: "Program kuliner Jepang Archipelago yang ditawarkan di Aston Anyer dan properti Aston lain di Banten.", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2026-12-31T23:59:59Z"), source: "Radar Banten", sourceUrl: "https://www.radarbanten.co.id/2026/07/01/hotel-aston-hadirkan-festival-kuliner-jepang-60-seconds-to-tokyo/", capturedAt: new Date("2026-07-01T00:00:00Z"), status: "new" },
-    create: { id: "30000000-0000-4000-8000-000000000001", competitorId: "10000000-0000-4000-8000-000000000001", title: "60 Seconds to Tokyo", category: "F&B", description: "Program kuliner Jepang Archipelago yang ditawarkan di Aston Anyer dan properti Aston lain di Banten.", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2026-12-31T23:59:59Z"), source: "Radar Banten", sourceUrl: "https://www.radarbanten.co.id/2026/07/01/hotel-aston-hadirkan-festival-kuliner-jepang-60-seconds-to-tokyo/", capturedAt: new Date("2026-07-01T00:00:00Z"), status: "new" },
-  });
-
   const observedAt = new Date("2026-09-23T00:00:00+07:00");
   const competitors = [
     { id: "10000000-0000-4000-8000-000000000001", name: "Aston Anyer Beach Hotel", location: "Anyer", rating: 4.7, reviewCount: 17132, ratingSource: "Google Hotels", ratingSourceUrl: "https://www.google.com/travel/hotels/entity/CgsIyMeqy4H4hJPOARAB", ratingObservedAt: observedAt, notes: "Rating publik snapshot; hotel/resort pembanding langsung di kawasan Anyer." },
@@ -51,6 +45,12 @@ async function main() {
   for (const competitor of competitors) {
     await db.competitor.upsert({ where: { id: competitor.id }, update: competitor, create: competitor });
   }
+
+  await db.competitorPromotion.upsert({
+    where: { id: "30000000-0000-4000-8000-000000000001" },
+    update: { title: "60 Seconds to Tokyo", category: "F&B", description: "Program kuliner Jepang Archipelago yang ditawarkan di Aston Anyer dan properti Aston lain di Banten.", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2026-12-31T23:59:59Z"), source: "Radar Banten", sourceUrl: "https://www.radarbanten.co.id/2026/07/01/hotel-aston-hadirkan-festival-kuliner-jepang-60-seconds-to-tokyo/", capturedAt: new Date("2026-07-01T00:00:00Z"), status: "new" },
+    create: { id: "30000000-0000-4000-8000-000000000001", competitorId: "10000000-0000-4000-8000-000000000001", title: "60 Seconds to Tokyo", category: "F&B", description: "Program kuliner Jepang Archipelago yang ditawarkan di Aston Anyer dan properti Aston lain di Banten.", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2026-12-31T23:59:59Z"), source: "Radar Banten", sourceUrl: "https://www.radarbanten.co.id/2026/07/01/hotel-aston-hadirkan-festival-kuliner-jepang-60-seconds-to-tokyo/", capturedAt: new Date("2026-07-01T00:00:00Z"), status: "new" },
+  });
 }
 
 main()

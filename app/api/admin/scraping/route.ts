@@ -46,6 +46,10 @@ function safeDomain(domain: string): string {
 
 export function createAdminScrapingHandlers({
   runNewsNow: start = runNewsNow,
+  collectHotelRates = async () => {
+    const { collectGoogleHotelMarketRates } = await import("@/lib/market/collect-rates");
+    return collectGoogleHotelMarketRates();
+  },
   getEnabledSources: sources = () => getEnabledSources("news"),
   listRecentRuns: runs = () => listRecentRuns(20),
   ensureNewsSource = async () => {
@@ -58,6 +62,7 @@ export function createAdminScrapingHandlers({
   },
 }: {
   runNewsNow?: RunNewsNow;
+  collectHotelRates?: () => Promise<Array<{ hotel: string; price: number; currency: string; sourceUrl: string }>>;
   getEnabledSources?: () => Promise<Source[]>;
   listRecentRuns?: () => Promise<ScrapeRun[]>;
   ensureNewsSource?: () => Promise<void>;
@@ -65,17 +70,76 @@ export function createAdminScrapingHandlers({
   return {
     async GET() {
       await ensureNewsSource();
-      return Response.json({ sources: (await sources()).map(publicSource), runs: (await runs()).map(publicRun) });
+      const { db } = await import("@/lib/db");
+      const [sanghyangLatest, competitorRates] = await Promise.all([
+        db.sanghyangPriceSnapshot.findFirst({
+          where: { packageName: "Google Hotels displayed rate" },
+          orderBy: { observedAt: "desc" },
+        }),
+        db.competitorPriceSnapshot.findMany({
+          where: { packageName: "Google Hotels displayed rate" },
+          include: { competitor: { select: { name: true } } },
+          orderBy: { observedAt: "desc" },
+        }),
+      ]);
+
+      const hotelRates = [
+        ...(sanghyangLatest
+          ? [{
+              hotel: "Sanghyang",
+              price: Number(sanghyangLatest.price),
+              currency: sanghyangLatest.currency,
+              observedAt: sanghyangLatest.observedAt.toISOString(),
+              sourceUrl: sanghyangLatest.sourceUrl,
+            }]
+          : []),
+        ...competitorRates.map((c) => ({
+          hotel: c.competitor?.name ?? "Kompetitor",
+          price: Number(c.price),
+          currency: c.currency,
+          observedAt: c.observedAt.toISOString(),
+          sourceUrl: c.sourceUrl,
+        })),
+      ];
+
+      return Response.json({
+        sources: (await sources()).map(publicSource),
+        runs: (await runs()).map(publicRun),
+        hotelRates,
+      });
     },
 
     async POST(request: Request) {
       await ensureNewsSource();
       const body: unknown = await request.json().catch(() => undefined);
-      if (!body || typeof body !== "object" || (body as { job?: unknown }).job !== "news") {
-        return Response.json({ error: "Body must be { job: 'news' }." }, { status: 400 });
+      const job = (body && typeof body === "object" && typeof (body as { job?: unknown }).job === "string")
+        ? (body as { job: string }).job
+        : undefined;
+
+      if (!job || (job !== "news" && job !== "rates" && job !== "all")) {
+        return Response.json({ error: "Body must be { job: 'news' | 'rates' | 'all' }." }, { status: 400 });
       }
+
+      if (job === "rates") {
+        try {
+          const rates = await collectHotelRates();
+          return Response.json({ job: "rates", status: "success", rates }, { status: 200 });
+        } catch (error) {
+          console.error("Rates scraping error:", error);
+          return Response.json({ job: "rates", status: "failed", error: String(error) }, { status: 500 });
+        }
+      }
+
       try {
-        const task = start();
+        const task = (async () => {
+          const newsRes = await start();
+          // Concurrently or immediately after news run, refresh hotel market rates
+          await collectHotelRates().catch((err) => {
+            console.error("Background hotel rates crawl failed:", err);
+          });
+          return newsRes;
+        })();
+
         try {
           after(async () => { await task.catch(() => undefined); });
           return Response.json({ runId: "pending", status: "running" }, { status: 202 });
