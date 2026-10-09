@@ -19,6 +19,7 @@ const source = (id: string, domain = `${id}.example.com`): Source => ({
   lastRunAt: null,
   lastSuccessAt: null,
   failureCount: 0,
+  version: 1,
   createdAt: now,
   updatedAt: now,
 });

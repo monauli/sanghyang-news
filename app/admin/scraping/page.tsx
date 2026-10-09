@@ -142,7 +142,7 @@ export default function HalamanAdminScraping() {
       if (!response.ok) throw new Error();
       await load();
     } catch {
-      setError("Tidak dapat memperbarui harga hotel via Crawl4AI. Coba lagi.");
+      setError("Tidak dapat memperbarui harga hotel. Coba lagi.");
     } finally {
       setStartingRates(false);
     }
@@ -169,7 +169,7 @@ export default function HalamanAdminScraping() {
             Pengambilan Berita &amp; Harga Pasar
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Pantau sumber dan perbarui berita pasar serta harga hotel Google Hotels via Crawl4AI.
+            Pantau sumber dan perbarui berita pasar serta harga hotel Google Hotels via Live Engine.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -180,8 +180,8 @@ export default function HalamanAdminScraping() {
             className="rounded-lg border border-green-800 bg-white px-4 py-2.5 text-sm font-semibold text-green-900 hover:bg-green-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
           >
             {startingRates
-              ? "Crawl4AI Berjalan…"
-              : "Perbarui Harga Hotel (Crawl4AI)"}
+              ? "Memperbarui Harga…"
+              : "Perbarui Harga Hotel"}
           </button>
           <button
             type="button"
@@ -215,7 +215,7 @@ export default function HalamanAdminScraping() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-semibold text-green-900">
-                    Harga Pasar Hotel Terkini (Crawl4AI)
+                    Harga Pasar Hotel Terkini
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
                     Harga promo OTA terendah yang terlihat di Google Hotels (check-in 11 Okt, check-out 12 Okt 2026, 2 dewasa).
@@ -271,7 +271,7 @@ export default function HalamanAdminScraping() {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-gray-500">
-                  Belum ada data harga hotel tersimpan. Klik &ldquo;Perbarui Harga Hotel (Crawl4AI)&rdquo; di atas.
+                  Belum ada data harga hotel tersimpan. Klik &ldquo;Perbarui Harga Hotel&rdquo; di atas.
                 </p>
               )}
             </section>

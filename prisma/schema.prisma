@@ -84,6 +84,7 @@ model Source {
   lastRunAt       DateTime?
   lastSuccessAt   DateTime?
   failureCount    Int            @default(0)
+  version         Int            @default(1)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   articles        Article[]
@@ -107,6 +108,7 @@ model Article {
   imageUrl        String?
   contentHash     String?       @unique
   status          ArticleStatus @default(discovered)
+  version         Int           @default(1)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   source          Source        @relation(fields: [sourceId], references: [id], onDelete: Restrict)
@@ -131,6 +133,7 @@ model MarketItem {
   startsAt  DateTime?
   endsAt    DateTime?
   tags      Json?
+  version   Int            @default(1)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   article   Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
@@ -157,6 +160,7 @@ model Competitor {
   socialUrl      String?
   active         Boolean                   @default(true)
   notes          String?
+  version        Int                       @default(1)
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
   priceSnapshots CompetitorPriceSnapshot[]
@@ -181,6 +185,7 @@ model CompetitorPriceSnapshot {
   source        String
   sourceUrl     String?
   observedAt    DateTime   @default(now())
+  version       Int        @default(1)
   createdAt     DateTime   @default(now())
   competitor    Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
 
@@ -202,6 +207,7 @@ model SanghyangPriceSnapshot {
   source        String
   sourceUrl     String?
   observedAt    DateTime @default(now())
+  version       Int      @default(1)
   createdAt     DateTime @default(now())
 
   @@index([roomName, checkIn, checkOut, guests])
@@ -224,6 +230,7 @@ model CompetitorPromotion {
   imageUrl      String?
   capturedAt    DateTime
   status        PromotionStatus
+  version       Int             @default(1)
   createdAt     DateTime        @default(now())
   competitor    Competitor      @relation(fields: [competitorId], references: [id], onDelete: Restrict)
 
@@ -250,6 +257,7 @@ model CompetitorReview {
   sentiment    ReviewSentiment
   themes       String[]
   capturedAt   DateTime
+  version      Int             @default(1)
   createdAt    DateTime        @default(now())
   competitor   Competitor      @relation(fields: [competitorId], references: [id], onDelete: Restrict)
 
@@ -270,6 +278,7 @@ model MarketInsight {
   priority         Int
   confidence       Int
   status           MarketInsightStatus @default(active)
+  version          Int                 @default(1)
   generatedAt      DateTime            @default(now())
   createdAt        DateTime            @default(now())
 

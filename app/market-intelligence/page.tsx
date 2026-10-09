@@ -16,9 +16,28 @@ type Summary = {
     headline: string;
     relevance?: string;
     sentiment: string;
+    activeFrom?: string;
+    activeTo?: string;
+    socialUrls?: {
+      instagram?: string;
+      tiktok?: string;
+      website?: string;
+      maps?: string;
+    };
   }[];
   trend: Record<string, number[]>;
-  comparison: { name: string; rating: number; reviewCount: number; difference: number; source: string; sourceUrl?: string }[];
+  comparison: {
+    name: string;
+    rating: number;
+    reviewCount: number;
+    difference: number;
+    source: string;
+    sourceUrl?: string;
+    instagramUrl?: string;
+    tiktokUrl?: string;
+    websiteUrl?: string;
+    googleMapsUrl?: string;
+  }[];
   priceComparison: { competitor: string; roomName: string | null; currency: string; guests: number; checkIn?: string; checkOut?: string; sanghyangPrice: number; competitorPrice: number; difference: number; source: string; sourceUrl?: string }[];
   marketRateComparison: { hotel: string; price: number; currency: string; guests: number; checkIn: string; checkOut: string; source: string; sourceUrl?: string; difference: number | null }[];
   sanghyang: { rating: number; reviewCount: number };
@@ -29,6 +48,7 @@ const tabs = [
   "Kuliner",
   "Acara",
   "Hiburan",
+  "Destinasi",
   "Kompetitor",
   "Promo",
   "Ulasan",
@@ -110,9 +130,42 @@ export default function MarketIntelligencePage() {
       .catch(() => setTrendData(null))
       .finally(() => setTrendLoading(false));
   }, []);
+  const tabToSegment: Record<string, string> = {
+    Ringkasan: "all",
+    Kuliner: "fnb",
+    Acara: "event",
+    Hiburan: "entertainment",
+    Destinasi: "destination",
+    Kompetitor: "competitor",
+    Promo: "promotion",
+    Ulasan: "review",
+  };
+  const segmentToTab: Record<string, (typeof tabs)[number]> = {
+    all: "Ringkasan",
+    fnb: "Kuliner",
+    event: "Acara",
+    entertainment: "Hiburan",
+    destination: "Destinasi",
+    competitor: "Kompetitor",
+    promotion: "Promo",
+    review: "Ulasan",
+  };
+  const categoryMap: Record<string, string> = {
+    Kuliner: "F&B",
+    Acara: "Events",
+    Hiburan: "Entertainment",
+    Destinasi: "Destinations",
+    Kompetitor: "Competitors",
+    Promo: "Promotions",
+    Ulasan: "Reviews",
+  };
   const rows = (data?.recentRows ?? [])
-    .filter((r) => tab === "Ringkasan" || r.category === ({ Kuliner: "F&B", Acara: "Events", Hiburan: "Entertainment", Kompetitor: "Competitors", Promo: "Promotions", Ulasan: "Reviews" } as Record<string, string>)[tab])
-    .slice(0, 8);
+    .filter((r) => {
+      if (applied.segment !== "all") return true;
+      if (tab === "Ringkasan") return true;
+      return r.category === categoryMap[tab];
+    })
+    .slice(0, 50);
   const comparison = data?.comparison ?? [];
   const strongestCompetitor = comparison.reduce((best, item) => !best || item.rating > best.rating ? item : best, null as Summary["comparison"][number] | null);
   const higherRated = comparison.filter((item) => item.difference > 0);
@@ -121,6 +174,7 @@ export default function MarketIntelligencePage() {
     setPeriod("30d");
     setSegment("all");
     setSource("");
+    setTab("Ringkasan");
     setApplied({ period: "30d", segment: "all", source: "" });
   };
   return (
@@ -161,7 +215,7 @@ export default function MarketIntelligencePage() {
               aria-selected={tab === x}
               key={x}
               onClick={() => {
-                const nextSegment = ({ Kuliner: "fnb", Acara: "event", Hiburan: "entertainment", Kompetitor: "competitor", Promo: "promotion", Ulasan: "review" } as Record<string, string>)[x] ?? "all";
+                const nextSegment = tabToSegment[x] ?? "all";
                 setTab(x);
                 setSegment(nextSegment);
                 setApplied({ period, segment: nextSegment, source });
@@ -213,8 +267,12 @@ export default function MarketIntelligencePage() {
             Atur ulang
           </button>
           <button
-            onClick={() => setApplied({ period, segment, source })}
-          className="rounded-lg bg-[#183334] px-6 py-3 text-sm font-semibold text-white"
+            onClick={() => {
+              const targetTab = segmentToTab[segment] ?? tab;
+              setTab(targetTab);
+              setApplied({ period, segment, source });
+            }}
+            className="rounded-lg bg-[#183334] px-6 py-3 text-sm font-semibold text-white hover:bg-[#226e6b] transition-colors"
           >
             Terapkan
           </button>
@@ -234,7 +292,142 @@ export default function MarketIntelligencePage() {
         </section>}
         {tab !== "Ringkasan" && <section className="mb-5 rounded-xl border border-[#dbe3eb] bg-white p-5 shadow-[0_8px_24px_rgba(19,40,64,0.05)]">
           <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#226e6b]">Temuan terpilih</p><h2 className="mt-1 text-xl font-semibold">Rekap {tab}</h2><p className="mt-1 text-sm text-[#66758a]">Temuan dalam rentang tanggal yang dipilih.</p></div><span className="rounded-full bg-[#f4fbe9] px-3 py-1 text-xs font-semibold text-[#1d5c50]">{rows.length} temuan</span></div>
-          {loading ? <p className="py-8 text-center text-sm text-[#66758a]">Memuat rekap…</p> : rows.length ? <div className="mt-5 space-y-3">{rows.map((r) => <article key={`${r.category}-${r.date}-${r.headline}`} className="rounded-xl border border-[#dbe3eb] bg-[#fbfcfd] p-4 transition-colors duration-200 hover:border-[#8fbfb6] hover:bg-white"><div className="flex flex-wrap items-start justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-[#66758a]">{fmt(r.date)} · {sourceLabel(r.source)}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${r.sentiment === "positive" ? "bg-[#e7f7ef] text-[#22745e]" : r.sentiment === "negative" ? "bg-[#fff0ef] text-[#b54747]" : "bg-[#f1f4f7] text-[#52657c]"}`}>{sentimentLabel(r.sentiment)}</span></div><h3 className="mt-3 font-semibold leading-6">{r.sourceUrl ? <a className="text-[#1b6c68] underline decoration-[#b7ff67] underline-offset-2" href={r.sourceUrl} target="_blank" rel="noreferrer">{r.headline}</a> : r.headline}</h3><p className="mt-2 text-sm leading-6 text-[#66758a]">{r.relevance}</p></article>)}</div> : <div className="mt-4 rounded-xl bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada temuan {tab.toLowerCase()} pada rentang tanggal ini.</div>}
+          {loading ? (
+            <p className="py-8 text-center text-sm text-[#66758a]">Memuat rekap…</p>
+          ) : rows.length ? (
+            <div className="mt-5 space-y-3">
+              {rows.map((r) => (
+                <article
+                  key={`${r.category}-${r.date}-${r.headline}`}
+                  className="rounded-xl border border-[#dbe3eb] bg-[#fbfcfd] p-4 transition-colors duration-200 hover:border-[#8fbfb6] hover:bg-white"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#66758a]">
+                        {fmt(r.date)} · {sourceLabel(r.source)}
+                      </span>
+                      {r.activeTo && (
+                        <span className="rounded-md bg-[#eef7ff] px-2 py-0.5 text-[11px] font-medium text-[#1e6091] border border-[#d0e4f7]">
+                          📅 Periode aktif: {fmt(r.activeFrom || r.date)} – {fmt(r.activeTo)}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        r.sentiment === "positive"
+                          ? "bg-[#e7f7ef] text-[#22745e]"
+                          : r.sentiment === "negative"
+                            ? "bg-[#fff0ef] text-[#b54747]"
+                            : "bg-[#f1f4f7] text-[#52657c]"
+                      }`}
+                    >
+                      {sentimentLabel(r.sentiment)}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 font-semibold leading-6">
+                    {r.sourceUrl ? (
+                      <a
+                        className="text-[#1b6c68] underline decoration-[#b7ff67] underline-offset-2"
+                        href={r.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {r.headline}
+                      </a>
+                    ) : (
+                      r.headline
+                    )}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-[#66758a]">{r.relevance}</p>
+
+                  {/* Bukti Grounding Postingan Asli Berita / Temuan */}
+                  <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-[#e8edf2] pt-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="font-semibold text-[#183334] flex items-center gap-1.5 shrink-0">
+                        <span className="text-[#226e6b]">📌</span> Bukti Grounding:
+                      </span>
+                      {r.sourceUrl ? (
+                        <a
+                          href={r.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-[#8fbfb6] bg-[#f0f9f6] px-2.5 py-1 font-mono text-[11px] font-medium text-[#134e4a] hover:bg-[#dcf2eb] hover:border-[#226e6b] transition-all max-w-[280px] sm:max-w-[420px] md:max-w-[500px]"
+                          title={r.sourceUrl}
+                        >
+                          <span className="shrink-0">
+                            {r.sourceUrl.includes("instagram.com")
+                              ? "📷"
+                              : r.sourceUrl.includes("tiktok.com")
+                                ? "🎵"
+                                : r.sourceUrl.includes("google.com") || r.sourceUrl.includes("maps")
+                                  ? "📍"
+                                  : "🌐"}
+                          </span>
+                          <span className="truncate">{r.sourceUrl}</span>
+                          <span className="shrink-0 text-[#226e6b] font-bold">↗</span>
+                        </a>
+                      ) : (
+                        <span className="text-[#8896a6] italic">Tautan bukti terverifikasi</span>
+                      )}
+                    </div>
+                    {r.socialUrls && (
+                      <div className="flex items-center gap-2 text-[11px] text-[#66758a]">
+                        <span className="text-[#94a3b8]">Profil:</span>
+                        {r.socialUrls.instagram && (
+                          <a
+                            href={r.socialUrls.instagram}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#be185d] hover:underline"
+                            title="Instagram Profil"
+                          >
+                            IG
+                          </a>
+                        )}
+                        {r.socialUrls.tiktok && (
+                          <a
+                            href={r.socialUrls.tiktok}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#0f172a] hover:underline"
+                            title="TikTok Profil"
+                          >
+                            TikTok
+                          </a>
+                        )}
+                        {r.socialUrls.website && (
+                          <a
+                            href={r.socialUrls.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#047857] hover:underline"
+                            title="Website Resmi"
+                          >
+                            Web
+                          </a>
+                        )}
+                        {r.socialUrls.maps && (
+                          <a
+                            href={r.socialUrls.maps}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#1d4ed8] hover:underline"
+                            title="Google Maps"
+                          >
+                            Maps
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl bg-[#f4f7fa] p-4 text-sm text-[#42546b]">
+              Belum ada temuan {tab.toLowerCase()} pada rentang tanggal ini.
+            </div>
+          )}
         </section>}
         {(tab === "Ringkasan" || tab === "Kompetitor") && <>
         <section className="mb-4 rounded-lg border bg-white p-5">
@@ -249,7 +442,7 @@ export default function MarketIntelligencePage() {
               disabled={refreshingRates}
               className="rounded-lg border border-[#183334] px-3.5 py-2 text-xs font-semibold text-[#183334] hover:bg-[#183334] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {refreshingRates ? "Memperbarui via Crawl4AI…" : "Perbarui Harga Sekarang"}
+              {refreshingRates ? "Memperbarui Tarif Pasar…" : "Perbarui Harga Sekarang"}
             </button>
           </div>
           {data?.marketRateComparison?.length ? <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[860px] text-left text-sm"><thead className="bg-[#f4f7fa]"><tr>{["Hotel", "Tanggal menginap", "Tamu", "Harga terendah terlihat", "Selisih dari Sanghyang", "Sumber"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y">{data.marketRateComparison.map((x) => <tr key={`${x.hotel}-${x.checkIn}`} className={x.hotel === "Sanghyang" ? "bg-[#f4fbe9]" : ""}><td className="px-3 py-3 font-semibold">{x.hotel}</td><td className="px-3 py-3">{fmt(x.checkIn)} – {fmt(x.checkOut)}</td><td className="px-3 py-3">{x.guests} dewasa</td><td className="px-3 py-3">{x.currency} {x.price.toLocaleString("id-ID")}</td><td className={`px-3 py-3 font-semibold ${x.difference == null || x.difference === 0 ? "text-[#183334]" : x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference == null || x.difference === 0 ? "Patokan Sanghyang" : `${x.difference > 0 ? "+" : ""}${x.currency} ${x.difference.toLocaleString("id-ID")}`}</td><td className="px-3 py-3"><a className="text-[#1b6c68] underline" href={x.sourceUrl} target="_blank" rel="noreferrer">Google Hotels</a></td></tr>)}</tbody></table></div> : <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada harga pasar tersimpan.</div>}
@@ -292,7 +485,17 @@ export default function MarketIntelligencePage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {comparisonProfiles.map((x, i) => <article key={x.name} className={i === 0 ? "rounded-lg border border-[#b7ff67] bg-[#f4fbe9] p-4" : "rounded-lg border border-[#dbe3eb] bg-white p-4"}>
               <div className="flex items-start justify-between gap-3">
-                <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#1b6c68] underline">{x.name}</a>
+                <div>
+                  <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#1b6c68] underline">{x.name}</a>
+                  <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
+                    {x.instagramUrl && (
+                      <a href={x.instagramUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-[#be185d] hover:underline">📷 Instagram</a>
+                    )}
+                    {x.tiktokUrl && (
+                      <a href={x.tiktokUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-[#334155] hover:underline">🎵 TikTok</a>
+                    )}
+                  </div>
+                </div>
                 {i === 0 && <span className="shrink-0 rounded-full bg-[#b7ff67] px-2 py-1 text-xs font-semibold text-[#1d5c50]">Kita</span>}
               </div>
               <dl className="mt-4 grid gap-3 text-sm">
@@ -309,11 +512,34 @@ export default function MarketIntelligencePage() {
           <h2 className="text-xl font-semibold">Posisi reputasi dibanding kompetitor</h2>
           <p className="mt-1 text-sm text-[#66758a]">Diurutkan dari jumlah ulasan terbanyak. Selisih rating menunjukkan posisi setiap resort dibanding rating Sanghyang ({data?.sanghyang.rating ?? 4.4}/5).</p>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-[#f4f7fa]"><tr>{["Resort", "Rating publik", "Jumlah ulasan", "Dibanding Sanghyang", "Sumber"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="bg-[#f4f7fa]"><tr>{["Resort & Venue", "Rating publik", "Jumlah ulasan", "Dibanding Sanghyang", "Media Sosial", "Sumber"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
               <tbody className="divide-y">
-                <tr className="bg-[#f4fbe9]"><td className="px-3 py-3 font-semibold">Sanghyang</td><td className="px-3 py-3 font-semibold">{data?.sanghyang.rating ?? 4.4}/5</td><td className="px-3 py-3">{(data?.sanghyang.reviewCount ?? 2909).toLocaleString("id-ID")}</td><td className="px-3 py-3">Profil kita</td><td className="px-3 py-3">Profil resmi</td></tr>
-                {(data?.comparison ?? []).map((x) => <tr key={x.name}><td className="px-3 py-3">{x.sourceUrl ? <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="text-[#1b6c68] underline">{x.name}</a> : x.name}</td><td className="px-3 py-3">{x.rating.toFixed(1)}/5</td><td className="px-3 py-3">{x.reviewCount.toLocaleString("id-ID")}</td><td className={`px-3 py-3 font-medium ${x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference > 0 ? `Sanghyang kurang ${x.difference.toFixed(1)} poin` : x.difference < 0 ? `Sanghyang unggul ${Math.abs(x.difference).toFixed(1)} poin` : "Setara"}</td><td className="px-3 py-3 text-[#66758a]">{sourceLabel(x.source)}</td></tr>)}
+                <tr className="bg-[#f4fbe9]">
+                  <td className="px-3 py-3 font-semibold">Sanghyang Indah Spa Resort</td>
+                  <td className="px-3 py-3 font-semibold">{data?.sanghyang.rating ?? 4.4}/5</td>
+                  <td className="px-3 py-3">{(data?.sanghyang.reviewCount ?? 2909).toLocaleString("id-ID")}</td>
+                  <td className="px-3 py-3">Profil kita</td>
+                  <td className="px-3 py-3">
+                    <a href="https://www.instagram.com/sanghyangindahsparesort/" target="_blank" rel="noreferrer" className="text-xs font-medium text-[#be185d] underline">📷 Instagram</a>
+                  </td>
+                  <td className="px-3 py-3">Profil resmi</td>
+                </tr>
+                {(data?.comparison ?? []).map((x) => <tr key={x.name}>
+                  <td className="px-3 py-3">{x.sourceUrl ? <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="text-[#1b6c68] underline">{x.name}</a> : x.name}</td>
+                  <td className="px-3 py-3">{x.rating.toFixed(1)}/5</td>
+                  <td className="px-3 py-3">{x.reviewCount.toLocaleString("id-ID")}</td>
+                  <td className={`px-3 py-3 font-medium ${x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>{x.difference > 0 ? `Sanghyang kurang ${x.difference.toFixed(1)} poin` : x.difference < 0 ? `Sanghyang unggul ${Math.abs(x.difference).toFixed(1)} poin` : "Setara"}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {x.instagramUrl && <a href={x.instagramUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#be185d] underline">📷 IG</a>}
+                      {x.tiktokUrl && <a href={x.tiktokUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#334155] underline">🎵 TikTok</a>}
+                      {x.websiteUrl && <a href={x.websiteUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#047857] underline">🌐 Web</a>}
+                      {!x.instagramUrl && !x.tiktokUrl && !x.websiteUrl && <span className="text-xs text-[#94a3b8]">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-[#66758a]">{sourceLabel(x.source)}</td>
+                </tr>)}
               </tbody>
             </table>
           </div>
@@ -388,6 +614,22 @@ export default function MarketIntelligencePage() {
                       <td className="px-3 py-3">{sourceLabel(r.source)}</td>
                       <td className="max-w-[360px] px-3 py-3">
                         {r.sourceUrl ? <a className="font-medium text-[#1b6c68] underline decoration-[#b7ff67] underline-offset-2" href={r.sourceUrl} target="_blank" rel="noreferrer">{r.headline}</a> : r.headline}
+                        {r.socialUrls && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                            {r.socialUrls.instagram && (
+                              <a href={r.socialUrls.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 rounded border border-[#fbcfe8] bg-[#fdf2f8] px-1.5 py-0.5 text-[#be185d] hover:bg-[#fce7f3]">📷 IG</a>
+                            )}
+                            {r.socialUrls.tiktok && (
+                              <a href={r.socialUrls.tiktok} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 rounded border border-[#cbd5e1] bg-[#f8fafc] px-1.5 py-0.5 text-[#0f172a] hover:bg-[#f1f5f9]">🎵 TikTok</a>
+                            )}
+                            {r.socialUrls.website && (
+                              <a href={r.socialUrls.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 rounded border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[#047857] hover:bg-[#d1fae5]">🌐 Web</a>
+                            )}
+                            {r.socialUrls.maps && (
+                              <a href={r.socialUrls.maps} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 rounded border border-[#bfdbfe] bg-[#eff6ff] px-1.5 py-0.5 text-[#1d4ed8] hover:bg-[#dbeafe]">📍 Maps</a>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="max-w-[360px] px-3 py-3 text-[#66758a]">{r.relevance ?? "—"}</td>
                       <td className="px-3 py-3">{sentimentLabel(r.sentiment)}</td>

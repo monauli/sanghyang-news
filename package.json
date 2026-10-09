@@ -8,6 +8,9 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/test-market-scrapers.ts",
+    "health": "curl -f http://localhost:3001/api/health",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts"

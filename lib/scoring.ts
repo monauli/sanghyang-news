@@ -53,8 +53,6 @@ function scoreOne(it: FilteredArticle): ScoredArticle {
   const l = LISTICLE.filter((x) => title.includes(x));
   if (l.length) { s -= 4 * l.length; reasons.push(`📰${l[0]}`); }
 
-  if (/^\d+\s/.test(it.judul.trim())) { s -= 5; reasons.push('🔢'); }
-  if (/[!?]/.test(it.judul)) { s -= 3; reasons.push('❗'); }
   if (it.hits > 1) { s += 2; reasons.push(`✳️${it.hits}x`); }
 
   return { ...it, score: s, reasons };
