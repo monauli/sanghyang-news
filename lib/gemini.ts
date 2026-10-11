@@ -48,8 +48,6 @@ export type SummaryResult = {
   dibuangSanitizer: string[];    // baris yang dipotong sanitizer — kalau terisi, aturan 6 gagal
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 const jumlahKata = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
 /**
@@ -156,7 +154,7 @@ ${a.fullText.slice(0, MAX_TEXT)}`;
 }
 
 let klien: GoogleGenAI | null = null;
-function ai() {
+export function ai() {
   if (!klien) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY belum diisi');
@@ -178,9 +176,6 @@ export function jedaDari(pesan: string, percobaan: number): number {
   const saran = m ? Math.ceil(Number(m[1]) * 1000) + 500 : 2000 * 2 ** percobaan;
   return Math.min(saran, 30_000);
 }
-
-// maxDuration di Vercel 60 detik dan merangkum sendiri makan waktu.
-const ANGGARAN_TUNGGU = 35_000;
 
 /**
  * Terjemahan galat kuota untuk staf. Membedakan per-menit dari per-hari itu
@@ -207,34 +202,20 @@ export async function summarizeOne(a: ArtikelUntukRingkas): Promise<SummaryResul
   const gagal = (error: string): SummaryResult =>
     ({ summary: null, error, pesanUser: pesanKuota(error), targetKata: target, warnings, dibuangSanitizer: [] });
 
-  let menunggu = 0;
-  for (let percobaan = 0; percobaan < 3; percobaan++) {
-    try {
-      const res = await ai().models.generateContent({
-        model: model(),
-        contents: buatPrompt(a, target),
-      });
-      const teks = res.text?.trim();
-      if (!teks) return gagal('jawaban kosong');
+  try {
+    const res = await ai().models.generateContent({
+      model: model(),
+      contents: buatPrompt(a, target),
+    });
+    const teks = res.text?.trim();
+    if (!teks) return gagal('jawaban kosong');
 
-      const { bersih, dibuang } = sanitize(teks);
-      return { summary: bersih || null, targetKata: target, warnings, dibuangSanitizer: dibuang };
-    } catch (e) {
-      const pesan = (e as Error).message ?? String(e);
-      // Retry hanya untuk kehabisan kuota. Galat lain tidak akan sembuh dengan menunggu.
-      if (!/429|RESOURCE_EXHAUSTED|quota/i.test(pesan) || percobaan === 2) return gagal(pesan);
-
-      const jeda = jedaDari(pesan, percobaan);
-      // Menunggu lebih lama dari sisa anggaran cuma menukar 429 dengan timeout 504
-      // yang pesannya jauh lebih membingungkan buat staf.
-      // Pesan mentah Google yang diteruskan, bukan karangan sendiri: quotaId di
-      // dalamnya yang menentukan staf disuruh menunggu sebentar atau sampai besok.
-      if (menunggu + jeda > ANGGARAN_TUNGGU) return gagal(pesan);
-      menunggu += jeda;
-      await sleep(jeda);
-    }
+    const { bersih, dibuang } = sanitize(teks);
+    return { summary: bersih || null, targetKata: target, warnings, dibuangSanitizer: dibuang };
+  } catch (e) {
+    const pesan = (e as Error).message ?? String(e);
+    return gagal(pesan);
   }
-  return gagal('gagal setelah 3 percobaan');
 }
 
 /** Sekuensial — hormati limit RPM free tier. Volume normal ~5 panggilan per newsletter. */

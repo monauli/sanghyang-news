@@ -94,16 +94,43 @@ export function parseDisplayedRate(text: string, context: Omit<GoogleHotelRate, 
 
   if (!candidatePrices.length) return null;
 
-  // Prefer standard Indonesian OTA promo pricing rounded to nearest 50 IDR when close (e.g. Rp 375.936 -> Rp 375.950)
-  const normalizedPrices = candidatePrices.map((p) => {
-    const promoCandidate = candidatePrices.find((other) => other !== p && Math.abs(other - p) <= 50 && other % 50 === 0);
-    if (promoCandidate) return promoCandidate;
-    const rounded50 = Math.round(p / 50) * 50;
-    if (Math.abs(p - rounded50) <= 20) return rounded50;
-    return p;
-  });
+  return {
+    ...context,
+    price: Math.min(...candidatePrices),
+    currency: "IDR",
+    source: "Google Hotels lowest displayed rate",
+    observedAt: new Date(),
+  };
+}
 
-  return { ...context, price: Math.min(...normalizedPrices), currency: "IDR", source: "Google Hotels lowest displayed rate", observedAt: new Date() };
+async function parseRateWithGemini(text: string, hotelName: string): Promise<number | null> {
+  if (!process.env.GEMINI_API_KEY) return null;
+  try {
+    const { ai, model } = await import("../gemini");
+    const snippet = text.slice(0, 6000);
+    const prompt = `Analisis teks halaman Google Hotels untuk hotel "${hotelName}".
+Temukan tarif menginap per malam terendah (lowest displayed room rate) dalam mata uang Rupiah (IDR).
+Keluarkan HANYA JSON: {"price": number}. Jika tidak ada harga valid, keluarkan {"price": null}.
+
+<TEKS>
+${snippet}
+</TEKS>`;
+    const res = await ai().models.generateContent({
+      model: model(),
+      contents: prompt,
+    });
+    const raw = res.text?.trim() || "";
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) {
+      const parsed = JSON.parse(m[0]) as { price?: unknown };
+      if (typeof parsed.price === "number" && Number.isFinite(parsed.price) && parsed.price > 0) {
+        return Math.round(parsed.price);
+      }
+    }
+  } catch (error) {
+    console.warn("[google-hotel-rate] parseRateWithGemini notice:", (error as Error).message);
+  }
+  return null;
 }
 
 export async function fetchGoogleHotelRate(url: string, context: Omit<GoogleHotelRate, "price" | "currency" | "source" | "sourceUrl" | "observedAt">) {
@@ -129,7 +156,20 @@ export async function fetchGoogleHotelRate(url: string, context: Omit<GoogleHote
       if (response.ok) {
         const data = (await response.json()) as { full_text?: string; markdown?: string };
         const text = data.full_text || data.markdown || "";
-        const rate = parseDisplayedRate(text, { ...context, sourceUrl: target });
+        let rate = parseDisplayedRate(text, { ...context, sourceUrl: target });
+        if (!rate) {
+          const geminiPrice = await parseRateWithGemini(text, context.hotelName);
+          if (geminiPrice) {
+            rate = {
+              ...context,
+              price: geminiPrice,
+              currency: "IDR",
+              source: "Google Hotels lowest displayed rate",
+              sourceUrl: target,
+              observedAt: new Date(),
+            };
+          }
+        }
         if (rate) return rate;
       }
     } catch {
@@ -139,13 +179,28 @@ export async function fetchGoogleHotelRate(url: string, context: Omit<GoogleHote
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/google-chrome",
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
   });
   try {
     const page = await browser.newPage();
     await page.goto(target, { waitUntil: "networkidle2", timeout: 30_000 });
-    return parseDisplayedRate(await page.evaluate(() => document.body.innerText), { ...context, sourceUrl: target });
+    const text = await page.evaluate(() => document.body.innerText);
+    let rate = parseDisplayedRate(text, { ...context, sourceUrl: target });
+    if (!rate) {
+      const geminiPrice = await parseRateWithGemini(text, context.hotelName);
+      if (geminiPrice) {
+        rate = {
+          ...context,
+          price: geminiPrice,
+          currency: "IDR",
+          source: "Google Hotels lowest displayed rate",
+          sourceUrl: target,
+          observedAt: new Date(),
+        };
+      }
+    }
+    return rate;
   } finally {
     await browser.close();
   }

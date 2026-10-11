@@ -1,5 +1,6 @@
 import { extractFromHtml } from "@extractus/article-extractor";
 import { alamatAman } from "../urlaman";
+import { ai, model } from "../gemini";
 import type { ScrapeFailure, ScrapedArticle } from "./scraper";
 
 type BrowserPage = {
@@ -30,7 +31,48 @@ type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respons
 const cleanText = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 async function launchBrowser(): Promise<Browser> {
-  return (await import("puppeteer")).launch({ headless: true });
+  const puppeteer = await import("puppeteer");
+  return puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+  });
+}
+
+/**
+ * Native Gemini Structured Article Extractor (Antigravity Native LLM Engine)
+ * Membersihkan noise portal berita (iklan, disclaimer, navigasi) dan mengekstrak teks utama.
+ */
+async function extractWithGemini(rawText: string, fallbackTitle: string): Promise<{ title: string; content: string } | null> {
+  if (!process.env.GEMINI_API_KEY) return null;
+  try {
+    const prompt = `Kamu adalah parser artikel berita. Ekstrak judul dan teks artikel utama dari konten mentah berikut, buang iklan, menu navigasi, dan komentar.
+Keluarkan HANYA JSON valid: {"title": "string", "content": "string"}.
+
+<RAW_CONTENT>
+${rawText.slice(0, 10_000)}
+</RAW_CONTENT>`;
+
+    const res = await ai().models.generateContent({
+      model: model(),
+      contents: prompt,
+    });
+
+    const text = res.text?.trim() || "";
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]) as { title?: unknown; content?: unknown };
+      if (typeof parsed.content === "string" && parsed.content.length > 100) {
+        return {
+          title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : fallbackTitle,
+          content: parsed.content.trim(),
+        };
+      }
+    }
+  } catch (error) {
+    console.warn("[browser-fallback] extractWithGemini notice:", (error as Error).message);
+  }
+  return null;
 }
 
 const crawl4aiArticle = (payload: Crawl4AIResponse, url: string): ScrapedArticle | undefined => {
@@ -47,7 +89,6 @@ export function createCrawl4AIFallback({ endpoint = process.env.CRAWL4AI_URL, to
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(60_000),
       });
       if (!response.ok) throw new Error(`Crawl4AI returned ${response.status}`);
       const article = crawl4aiArticle(await response.json() as Crawl4AIResponse, url);
@@ -88,8 +129,16 @@ export function createBrowserFallback({ launch = launchBrowser, isSafe = alamatA
       await page.goto(url, { waitUntil: "networkidle2", timeout: 15_000 });
       const html = await page.content();
       const extracted = await extractFromHtml(html, url);
-      const content = extracted?.content ? cleanText(extracted.content) : cleanText(html);
-      const title = extracted?.title ?? await page.title();
+      let content = extracted?.content ? cleanText(extracted.content) : cleanText(html);
+      let title = extracted?.title ?? await page.title();
+
+      if (content && content.length > 50) {
+        const geminiCleaned = await extractWithGemini(content, title);
+        if (geminiCleaned) {
+          title = geminiCleaned.title;
+          content = geminiCleaned.content;
+        }
+      }
       result = { article: { title, canonicalUrl: url, ...(content ? { content } : {}) } };
     } catch (error) {
       result = { error: { stage: "extract", url, message: (error as Error).message } };
