@@ -1,6 +1,6 @@
 import { db } from '../lib/db';
 
-async function seedTikTokIntelligence() {
+export async function seedTikTokIntelligence() {
   console.log('--- Memulai Crawling & Grounding TikTok Intelligence untuk Kompetitor Anyer ---');
 
   // 1. Dapatkan atau buat Source TikTok
@@ -251,10 +251,13 @@ async function seedTikTokIntelligence() {
   console.log('\n--- Berhasil Melakukan Seeding TikTok Trend Intelligence ---');
 }
 
-seedTikTokIntelligence()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Gagal seeding TikTok intelligence:', err);
-    process.exit(1);
-  });
+if (process.argv[1]?.includes('seed-tiktok-intelligence')) {
+  seedTikTokIntelligence()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('Gagal seeding TikTok intelligence:', err);
+      process.exit(1);
+    });
+}
+
 

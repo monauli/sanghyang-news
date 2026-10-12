@@ -13,16 +13,17 @@ export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: 'Belum masuk.' }, { status: 401 });
   const params = new URL(request.url).searchParams; const period = (params.get('period') ?? '30d') as SummaryPeriod; const segment = params.get('segment') ?? 'all'; const source = params.get('source');
   if (!validateSummaryParams(period, segment, source)) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
+  const cleanHtmlText = (str: string) => str.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
   const [items, competitors, prices, sanghyangPrices, promotions, reviews] = await Promise.all([
     db.marketItem.findMany({ include: { article: { select: { title: true, publishedAt: true, canonicalUrl: true } } }, orderBy: { createdAt: 'desc' } }),
     db.competitor.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
-    db.competitorPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
+    db.competitorPriceSnapshot.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { observedAt: 'desc' } }),
     db.sanghyangPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
     db.competitorPromotion.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { capturedAt: 'desc' } }),
     db.competitorReview.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { reviewDate: 'desc' } }),
   ]);
   const competitorMentions = (text: string) => competitors.filter((c) => text.toLowerCase().includes(c.name.toLowerCase())).map((c) => c.name);
-  const relevantItems = items.filter((x) => isMarketRelevant({ title: x.article.title, text: x.description ?? '' }));
+  const relevantItems = items.filter((x) => isMarketRelevant({ title: x.article.title, text: cleanHtmlText(x.description ?? '') }));
   const rows: SummaryRow[] = [
     ...competitors.map((x) => ({
       date: (x.ratingObservedAt ?? x.updatedAt).toISOString(),
@@ -41,7 +42,8 @@ export async function GET(request: Request) {
     })),
     ...relevantItems.map((x) => {
       const category = x.kind === 'fnb' ? 'F&B' : x.kind === 'event' ? 'Events' : x.kind === 'entertainment' ? 'Entertainment' : 'Destinations';
-      const mentions = competitorMentions(`${x.article.title} ${x.description ?? ''}`);
+      const cleanDesc = cleanHtmlText(x.description ?? '');
+      const mentions = competitorMentions(`${x.article.title} ${cleanDesc}`);
       const tagsObj = (x.tags && typeof x.tags === 'object' && !Array.isArray(x.tags)) ? (x.tags as Record<string, unknown>) : null;
       const tagSocial = {
         instagram: (tagsObj?.instagramUrl as string) ?? undefined,
@@ -56,7 +58,7 @@ export async function GET(request: Request) {
         website: tagSocial.website ?? matchedComp?.websiteUrl ?? undefined,
         maps: tagSocial.maps ?? matchedComp?.googleMapsUrl ?? undefined,
       };
-      let rowSource = x.brand ? `${x.brand}` : 'Market news';
+      let rowSource = x.brand ? `${x.brand}` : 'Berita pasar';
       if (x.article.canonicalUrl?.includes('tiktok.com')) {
         const usernameMatch = x.article.canonicalUrl.match(/@([^/?#]+)/);
         rowSource = usernameMatch ? `TikTok @${usernameMatch[1]}` : (x.brand ? `TikTok ${x.brand}` : 'TikTok Trend');
@@ -65,6 +67,9 @@ export async function GET(request: Request) {
         if (igUserMatch && igUserMatch[1] !== 'p' && igUserMatch[1] !== 'reel') {
           rowSource = `Instagram @${igUserMatch[1]}`;
         }
+      } else if (x.article.canonicalUrl?.includes('news.google.com')) {
+        const pubMatch = x.article.title.match(/-\s*([^-\n]+)$/);
+        rowSource = pubMatch ? pubMatch[1].trim() : (x.brand ? `${x.brand}` : 'Berita pasar');
       }
       return {
         date: (x.article.publishedAt ?? x.createdAt).toISOString(),
@@ -72,15 +77,41 @@ export async function GET(request: Request) {
         source: rowSource,
         sourceUrl: x.article.canonicalUrl ?? socialUrls.instagram ?? socialUrls.website ?? undefined,
         headline: x.article.title,
-        relevance: `${x.description ? `${x.description} ` : ''}${mentions.length ? `Kaitan kompetitor: ${mentions.join(', ')}.` : ''}`,
+        relevance: `${cleanDesc ? `${cleanDesc} ` : ''}${mentions.length ? `Kaitan kompetitor: ${mentions.join(', ')}.` : ''}`.trim(),
         sentiment: 'positive' as const,
         activeFrom: (x.startsAt ?? x.article.publishedAt ?? x.createdAt).toISOString(),
         activeTo: x.endsAt ? x.endsAt.toISOString() : undefined,
         socialUrls: (socialUrls.instagram || socialUrls.tiktok || socialUrls.website || socialUrls.maps) ? socialUrls : undefined,
       };
     }),
-    ...prices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: `${x.roomName ?? x.packageName ?? 'Rate'} · ${x.price} ${x.currency}`, relevance: 'Bandingkan hanya dengan snapshot Sanghyang yang tanggal, kamar, tamu, dan mata uangnya sama.', sentiment: 'neutral' as const })),
-    ...sanghyangPrices.map((x) => ({ date: x.observedAt.toISOString(), category: 'Competitors', source: x.source, sourceUrl: x.sourceUrl ?? undefined, headline: `Sanghyang · ${x.roomName} · ${x.price} ${x.currency}`, relevance: 'Baseline harga Sanghyang untuk perbandingan dengan snapshot kompetitor yang setara.', sentiment: 'neutral' as const })),
+    ...prices.map((x) => {
+      const hotelName = x.competitor?.name ?? 'Kompetitor';
+      const label = x.roomName ? `${hotelName} · ${x.roomName}` : (x.packageName ? `${hotelName} · ${x.packageName}` : `${hotelName} · Tarif terendah`);
+      return {
+        date: x.observedAt.toISOString(),
+        category: 'Competitors',
+        source: x.source,
+        sourceUrl: x.sourceUrl ?? undefined,
+        headline: `${label} · ${Number(x.price).toLocaleString('id-ID')} ${x.currency}`,
+        relevance: `Bandingkan tarif ${hotelName} dengan baseline Sanghyang untuk tanggal, tipe kamar, dan tamu yang sama.`,
+        sentiment: 'neutral' as const,
+        socialUrls: {
+          instagram: x.competitor?.instagramUrl ?? undefined,
+          tiktok: x.competitor?.tiktokUrl ?? undefined,
+          website: x.competitor?.websiteUrl ?? undefined,
+          maps: x.competitor?.googleMapsUrl ?? undefined,
+        },
+      };
+    }),
+    ...sanghyangPrices.map((x) => ({
+      date: x.observedAt.toISOString(),
+      category: 'Competitors',
+      source: x.source,
+      sourceUrl: x.sourceUrl ?? undefined,
+      headline: `Sanghyang Indah Spa Resort · ${x.roomName} · ${Number(x.price).toLocaleString('id-ID')} ${x.currency}`,
+      relevance: 'Baseline harga resmi Sanghyang untuk perbandingan dengan snapshot kompetitor yang setara.',
+      sentiment: 'neutral' as const,
+    })),
     ...promotions.map((x) => {
       const postedDate = x.capturedAt ?? x.startsAt ?? x.createdAt;
       const promoDetails = [
