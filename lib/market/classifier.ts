@@ -45,16 +45,26 @@ function extractWords(text: string): string[] {
   return text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+const EXCLUDED_NOISE_TOKENS = [
+  "manasik", "haji", "korupsi", "tipikor", "pajak restoran", "bpkpad",
+  "dprd", "pilkada", "pemilu", "kejaksaan", "polres", "polsek", "sidang",
+  "tersangka", "narkoba", "tawuran", "razia", "pembunuhan", "perampokan",
+];
+
 export function isMarketRelevant(input: ClassifierInput): boolean {
   const cleanTitle = input.title.toLowerCase().split(/\s+-\s+/)[0];
   const combined = `${cleanTitle} ${input.text}`.toLowerCase();
   const words = new Set(extractWords(combined));
+
+  const isExcluded = EXCLUDED_NOISE_TOKENS.some((noise) => words.has(noise) || combined.includes(noise));
+  if (isExcluded) return false;
 
   const hasArea = TARGET_AREA_TOKENS.some((area) => words.has(area) || cleanTitle.includes(area));
   const hasMarketDomain = MARKET_DOMAIN_TOKENS.some((token) => words.has(token) || combined.includes(token));
 
   return hasArea && hasMarketDomain;
 }
+
 
 export function fallbackClassification(input: ClassifierInput): Classification {
   const text = `${input.title} ${input.text}`.toLowerCase();

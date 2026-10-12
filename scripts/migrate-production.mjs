@@ -1,15 +1,13 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const { spawnSync } = require("node:child_process");
-const { PrismaClient } = require("@prisma/client");
+import { readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { PrismaClient } from "@prisma/client";
 
 if (process.env.VERCEL_ENV !== "production") process.exit(0);
 
 async function main() {
-  const migrationsPath = path.join(__dirname, "..", "prisma", "migrations");
+  const migrationsPath = new URL("../prisma/migrations/", import.meta.url);
   const pendingMigration = "20261011000000_add_occ_version_columns";
-  const previousMigrations = fs
-    .readdirSync(migrationsPath, { withFileTypes: true })
+  const previousMigrations = readdirSync(migrationsPath, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== pendingMigration)
     .map((entry) => entry.name);
   const prisma = new PrismaClient();

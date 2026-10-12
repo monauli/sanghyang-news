@@ -21,11 +21,12 @@ export async function GET(request: Request) {
   }
 
   // Deep Readiness Probe (Verifies PostgreSQL DB connectivity & Gemini Model config <= 2s)
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     const dbPromise = db.$queryRaw`SELECT 1`;
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Database readiness timeout (> 2000ms)")), 2000),
-    );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error("Database readiness timeout")), 2000);
+    });
 
     await Promise.race([dbPromise, timeoutPromise]);
 
@@ -44,16 +45,18 @@ export async function GET(request: Request) {
       },
       { status: 200 },
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         status: "degraded",
         database: "disconnected",
-        error: error instanceof Error ? error.message : String(error),
+        error: "Readiness check failed",
         timestamp: new Date().toISOString(),
       },
       { status: 503 },
     );
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
 

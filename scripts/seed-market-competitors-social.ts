@@ -30,7 +30,7 @@ const itemSchedules: Record<string, { startsAt: Date; endsAt?: Date }> = {
   },
 };
 
-async function main() {
+export async function seedMarketCompetitorsSocial() {
   console.log('--- Mulai Seeding Data Kompetitor & Social Media Intelligence (100% Authentic Grounding) ---');
 
   // 1. Pastikan Source untuk Social Media & Travel Platforms
@@ -1188,11 +1188,14 @@ async function main() {
   console.log('--- Seeding Selesai Berhasil! Semua Kategori Terisi dengan Bukti Grounding 100% Nyata & Relevan ---');
 }
 
-main()
-  .catch((e) => {
-    console.error('Error saat seeding:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await db.$disconnect();
-  });
+if (process.argv[1]?.includes('seed-market-competitors-social')) {
+  seedMarketCompetitorsSocial()
+    .catch((e) => {
+      console.error('Error saat seeding:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await db.$disconnect();
+    });
+}
+
