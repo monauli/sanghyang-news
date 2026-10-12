@@ -467,7 +467,7 @@ cookie sesi. Semua rute lain dijaga `proxy.ts`.
 
 ```env
 GEMINI_API_KEY=xxx           # wajib
-APP_PASSWORD=sandi-bersama   # wajib — sandi masuk aplikasi
+APP_PASSWORD=                # wajib, isi dengan sandi unik yang kuat
 GEMINI_MODEL=…               # opsional, default gemini-3.5-flash-lite
 ```
 

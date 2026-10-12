@@ -213,8 +213,10 @@ Butuh dua environment variable. Buat berkas `.env.local` di root (contoh ada di
 
 ```
 GEMINI_API_KEY=xxx
-APP_PASSWORD=sandi-bersama
+APP_PASSWORD=
 ```
+
+Isi `APP_PASSWORD` dengan sandi unik yang kuat sebelum menjalankan aplikasi.
 
 `GEMINI_API_KEY` — kunci gratis di https://aistudio.google.com/apikey. Tanpa kunci
 ini aplikasi tetap jalan, tapi ringkasan otomatis gagal dan UI menampilkan textarea
