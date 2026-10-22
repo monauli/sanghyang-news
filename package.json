@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "test:market": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-market-scrapers.ts",
-    "test:all": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-market-audit-compliance.ts && node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-market-outlets-api.ts",
+    "test:all": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-market-audit-compliance.ts && node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-market-outlets-api.ts && node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/test-export-executive-pdf.ts",
     "sync:crawlai": "python scripts/export_crawlai_for_ingest.py && node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/ingest-crawlai-evidence.ts"
   },
   "dependencies": {

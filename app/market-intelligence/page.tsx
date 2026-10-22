@@ -202,7 +202,47 @@ export default function MarketIntelligencePage() {
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [trendLoading, setTrendLoading] = useState(true);
   const [refreshingRates, setRefreshingRates] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const downloadExecutivePdf = async () => {
+    if (!data) return;
+    setExportingPdf(true);
+    try {
+      const payload = {
+        publishDate: new Date().toISOString().split("T")[0],
+        periodText: period === "30d" ? "30 Hari Terakhir" : period === "90d" ? "90 Hari Terakhir" : "Tahun 2026",
+        executiveSummary: data.executiveSummary,
+        sanghyang: data.sanghyang,
+        outlets: data.outlets || [],
+        marketRateComparison: data.marketRateComparison || [],
+        actionFindings: data.actionFindings || [],
+        comparisons: data.comparisons || [],
+      };
+
+      const res = await fetch("/api/market-intelligence/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Gagal mengunduh PDF");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan_Eksekutif_Intelijen_Pasar_Sanghyang_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Gagal membuat laporan PDF eksekutif: " + (err as Error).message);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const refreshRates = async () => {
     setRefreshingRates(true);
@@ -381,7 +421,15 @@ export default function MarketIntelligencePage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void downloadExecutivePdf()}
+              disabled={exportingPdf || !data}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#115e59] disabled:opacity-50 transition-colors"
+            >
+              <span>{exportingPdf ? "⏳ Membuat PDF..." : "📄 Unduh Laporan PDF"}</span>
+            </button>
             <button
               type="button"
               onClick={() => void refreshRates()}

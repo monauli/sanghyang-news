@@ -42,6 +42,7 @@ yarn-error.log*
 next-env.d.ts
 scripts/.resolved.json
 scripts/.uji-newsletter.pdf
+scripts/.uji-laporan-eksekutif.pdf
 scripts/.terpilih.json
 scripts/.e2e-newsletter.pdf
 scripts/.uji-gambar.png
