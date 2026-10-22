@@ -91,3 +91,4 @@ function runPricingSimulatorTests() {
 }
 
 runPricingSimulatorTests();
+

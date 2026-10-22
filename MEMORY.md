@@ -3,22 +3,23 @@
 ## Active Project & Stack Overview
 - **Project**: Sanghyang News (Market Intelligence & Multi-Outlet Platform Anyer-Carita).
 - **Status**: Production Deployed (Vercel `https://sanghyang-news.vercel.app`), Branch `master`.
-- **Database**: PostgreSQL (Supabase BaaS) Project Ref: `lpnvlsmvndhfgodutpmu` (Region: `ap-south-1`).
-- **Primary Tech Stacks**:
-  - Backend: Next.js 16.3.2 App Router (Turbopack, Node 24 LTS)
-  - ORM: Prisma 6.19
-  - Scraping & AI: Puppeteer-core, Article Extractor, Google Gemini 2.5 Flash
+- **Database**: PostgreSQL (Supabase BaaS) Ref: `lpnvlsmvndhfgodutpmu` (Region: `ap-south-1`).
+- **Tech Stack**: Next.js 16.3.2 App Router (Turbopack, Node 24), Prisma 6.19, Puppeteer, Gemini 2.5 Flash.
 
 ## Architectural & Compliance Invariants (@[.agents])
 - **Dual URL Protocol**: `url = env("DATABASE_URL")` (pooler 6543) dan `directUrl = env("DIRECT_URL")` (port 5432).
-- **OCC Versioning**: 9 model mutable memiliki kolom `version Int @default(1)` untuk proteksi mutasi atomik.
-- **Migration Protocol**: 15 migrasi SQL di `prisma/migrations/`, deploy via `npx prisma migrate deploy`.
-- **Zero Mock Data**: Seluruh 273 ulasan pelanggan memiliki URL terverifikasi, tanggal riil, dan kutipan autentik.
+- **OCC Versioning**: 9 model mutable memiliki `version Int @default(1)` untuk proteksi mutasi atomik.
+- **The 4 Zeros Invariant**: Zero Mock Data (ulasan autentik), Zero Hardcoded Dates (tanggal dinamis besok & weekend), Zero Data Loss (riwayat tarif tersimpan tanpa `deleteMany`), Zero Duplicate (hash sha256).
 
-## CRAWLAIBWP Multi-Outlet Integration
-- Super-Repo All-in-One: Seluruh kode mesin perayap Crawl4AI ditempatkan di `crawler/research/` dengan basis data SQLite internal.
+## Multi-Outlet & Autonomous Nightly Crawl Engine
+- Super-Repo: Basis data internal Crawl4AI di `crawler/research/data/research.sqlite` terhubung ke Supabase.
 - 6 Outlet Sanghyang: Kamar/Resort, Sunset Grill, Dragon Beach Club, D'Bistro, D'Bar & Karaoke, D'Spa & Onsen Belerang.
-- 16 Entitas terdaftar, 273 ulasan pelanggan riil (Google Maps, Traveloka, Agoda, TripAdvisor), 16 MarketInsight (10 temuan maintain/improve + 5 komparasi head-to-head + 1 ringkasan eksekutif riset).
-- Satu Pintu Sinkronisasi: `npm run sync:crawlai` mengekspor dari `crawler/research/data/research.sqlite` langsung ke Supabase.
-- Multi-Kanal, Radar Sosmed & Dynamic Pricing: Scorecard 3-kanal, Radar Promo/Event Kompetitor (@astonanyer, @novusjivaanyer, @mambrukhotelanyer), Dynamic Pricing Simulator (RevPAR & PPI), dan nightly crawl (00:15 WIB GitHub Actions).
-- Pengujian Kualitas: `npm run test:all` memverifikasi 100% kepatuhan The 4 Zeros dan API Multi-Outlet.
+- Nightly Autonomous Scrape (00:15 WIB via `.github/workflows/nightly-market-scrape.yml`):
+  1. Google News Anyer/Banten (`lib/market/run-news.ts`).
+  2. Tarif Dinamis Google Hotels (`lib/market/collect-rates.ts` untuk besok & weekend).
+  3. Incremental Reviews Ingestion Google Maps (`lib/market/scrape-new-reviews.ts`).
+  4. Radar Postingan IG/TikTok Kompetitor (`lib/market/scrape-social-buzz.ts`).
+  5. Audit Status Promo & Event (`lib/market/sync-social-promos.ts`).
+  6. Heartbeat pencatatan data ke Supabase `marketInsight`.
+- Cloud-to-Local Mirror: `npm run sync:cloud-to-local` mengekspor snapshot cloud ke `data/synced-cloud-snapshot.json`.
+- Pengujian Kualitas: `npm run test:all` memverifikasi 6 gerbang DevSecOps & pipeline nightly.

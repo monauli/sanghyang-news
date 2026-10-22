@@ -191,12 +191,63 @@ export async function GET(request: Request) {
     prices.filter(inSelectedPeriod).filter((x) => x.packageName !== 'Google Hotels displayed rate').filter((x): x is typeof x & { roomName: string; checkIn: Date; checkOut: Date } => Boolean(x.roomName && x.checkIn && x.checkOut)).map((x) => ({ roomName: x.roomName, price: Number(x.price), currency: x.currency, guests: x.guests, checkIn: x.checkIn, checkOut: x.checkOut, source: x.source, sourceUrl: x.sourceUrl ?? '', competitorId: x.competitorId } satisfies PriceSnapshot)),
   );
   const priceRows = comparable.map(({ baseline, competitor: x, difference }) => ({ competitor: competitors.find((c) => c.id === x.competitorId)?.name ?? 'Kompetitor', roomName: x.roomName, currency: x.currency, guests: x.guests, checkIn: x.checkIn.toISOString(), checkOut: x.checkOut.toISOString(), sanghyangPrice: baseline.price, competitorPrice: x.price, difference, source: x.source, sourceUrl: x.sourceUrl || undefined }));
-  const marketRates = [
-    ...sanghyangPrices.filter(inSelectedPeriod).filter((x) => x.packageName === 'Google Hotels displayed rate').map((x) => ({ hotel: 'Sanghyang', price: Number(x.price), currency: x.currency, guests: x.guests, checkIn: x.checkIn.toISOString(), checkOut: x.checkOut.toISOString(), source: x.source, sourceUrl: x.sourceUrl ?? undefined })),
-    ...prices.filter(inSelectedPeriod).filter((x) => x.packageName === 'Google Hotels displayed rate').map((x) => ({ hotel: competitors.find((c) => c.id === x.competitorId)?.name ?? 'Kompetitor', price: Number(x.price), currency: x.currency, guests: x.guests, checkIn: x.checkIn?.toISOString() ?? '', checkOut: x.checkOut?.toISOString() ?? '', source: x.source, sourceUrl: x.sourceUrl ?? undefined })),
+  const latestSanghyangRate = sanghyangPrices.find((x) => x.packageName === 'Google Hotels displayed rate');
+  const latestCompetitorRatesMap = new Map<string, typeof prices[0]>();
+  for (const p of prices) {
+    if (p.packageName === 'Google Hotels displayed rate' && !latestCompetitorRatesMap.has(p.competitorId)) {
+      latestCompetitorRatesMap.set(p.competitorId, p);
+    }
+  }
+
+  const activeMarketRates = [
+    ...(latestSanghyangRate ? [{
+      hotel: 'Sanghyang',
+      price: Number(latestSanghyangRate.price),
+      currency: latestSanghyangRate.currency,
+      guests: latestSanghyangRate.guests,
+      checkIn: latestSanghyangRate.checkIn.toISOString(),
+      checkOut: latestSanghyangRate.checkOut.toISOString(),
+      observedAt: latestSanghyangRate.observedAt.toISOString(),
+      source: latestSanghyangRate.source,
+      sourceUrl: latestSanghyangRate.sourceUrl ?? undefined,
+    }] : []),
+    ...Array.from(latestCompetitorRatesMap.values()).map((x) => ({
+      hotel: competitors.find((c) => c.id === x.competitorId)?.name ?? 'Kompetitor',
+      price: Number(x.price),
+      currency: x.currency,
+      guests: x.guests,
+      checkIn: x.checkIn?.toISOString() ?? '',
+      checkOut: x.checkOut?.toISOString() ?? '',
+      observedAt: x.observedAt.toISOString(),
+      source: x.source,
+      sourceUrl: x.sourceUrl ?? undefined,
+    })),
   ];
-  const marketBaseline = marketRates.find((x) => x.hotel === 'Sanghyang')?.price;
-  const marketRateComparison = marketRates.map((x) => ({ ...x, difference: marketBaseline == null ? null : Number((x.price - marketBaseline).toFixed(2)) }));
+
+  const marketBaseline = activeMarketRates.find((x) => x.hotel === 'Sanghyang')?.price;
+  const marketRateComparison = activeMarketRates.map((x) => ({
+    ...x,
+    difference: marketBaseline == null ? null : Number((x.price - marketBaseline).toFixed(2)),
+  }));
+
+  const marketRateHistory = [
+    ...sanghyangPrices.filter((x) => x.packageName === 'Google Hotels displayed rate').map((x) => ({
+      hotel: 'Sanghyang',
+      price: Number(x.price),
+      currency: x.currency,
+      checkIn: x.checkIn.toISOString(),
+      checkOut: x.checkOut.toISOString(),
+      observedAt: x.observedAt.toISOString(),
+    })),
+    ...prices.filter((x) => x.packageName === 'Google Hotels displayed rate').map((x) => ({
+      hotel: competitors.find((c) => c.id === x.competitorId)?.name ?? 'Kompetitor',
+      price: Number(x.price),
+      currency: x.currency,
+      checkIn: x.checkIn?.toISOString() ?? '',
+      checkOut: x.checkOut?.toISOString() ?? '',
+      observedAt: x.observedAt.toISOString(),
+    })),
+  ].sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime());
 
   // Outlet-Level Intelligence breakdown
   const sanghyangOutlets = competitors.filter((c) => isSanghyangOutlet(c.name));
@@ -423,11 +474,18 @@ export async function GET(request: Request) {
     };
   });
 
+  const nightlyHeartbeat = await db.marketInsight.findFirst({
+    where: { fingerprint: "nightly-sync-heartbeat" },
+    select: { title: true, summary: true, evidence: true, generatedAt: true },
+  });
+
   return NextResponse.json({
     ...summary,
     comparison,
     priceComparison: priceRows,
     marketRateComparison,
+    marketRateHistory,
+    nightlyHeartbeat,
     sanghyang: { rating: sanghyangRating, reviewCount: sanghyangReviewCount },
     outlets,
     comparisons,

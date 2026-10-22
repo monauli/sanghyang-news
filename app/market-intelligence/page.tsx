@@ -131,7 +131,9 @@ type Summary = {
     googleMapsUrl?: string;
   }[];
   priceComparison: { competitor: string; roomName: string | null; currency: string; guests: number; checkIn?: string; checkOut?: string; sanghyangPrice: number; competitorPrice: number; difference: number; source: string; sourceUrl?: string }[];
-  marketRateComparison: { hotel: string; price: number; currency: string; guests: number; checkIn: string; checkOut: string; source: string; sourceUrl?: string; difference: number | null }[];
+  marketRateComparison: { hotel: string; price: number; currency: string; guests: number; checkIn: string; checkOut: string; observedAt?: string; source: string; sourceUrl?: string; difference: number | null }[];
+  marketRateHistory?: { hotel: string; price: number; currency: string; checkIn: string; checkOut?: string; observedAt: string }[];
+  nightlyHeartbeat?: { title: string; summary: string; evidence: Record<string, unknown>; generatedAt: string } | null;
   sanghyang: { rating: number; reviewCount: number };
   outlets?: OutletInfo[];
   comparisons?: ComparisonItem[];
@@ -229,6 +231,7 @@ export default function MarketIntelligencePage() {
   const [refreshingRates, setRefreshingRates] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showRateHistory, setShowRateHistory] = useState(false);
 
   const [promoCompetitorFilter, setPromoCompetitorFilter] = useState<string>("all");
   const [promoCategoryFilter, setPromoCategoryFilter] = useState<string>("all");
@@ -1545,42 +1548,78 @@ export default function MarketIntelligencePage() {
         {/* COMPETITOR POSITIONING & PRICE COMPARISONS */}
         {(tab === "Ringkasan" || tab === "Kompetitor") && selectedOutlet === "all" && (
           <>
-            <section className="mb-4 rounded-lg border bg-white p-5">
+            <section className="mb-4 rounded-xl border border-[#cbd5e1] bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold">Perbandingan harga pasar</h2>
-                  <p className="mt-1 text-sm text-[#66758a]">Harga terendah yang terlihat di Google Hotels untuk pencarian yang sama: tanggal, 2 dewasa, dan mata uang IDR.</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-[#0f392b]">Perbandingan Harga Pasar & Tarif Dinamis</h2>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Crawl Otomatis 00:15 WIB
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-[#475569]">
+                    Harga terendah yang terlihat di Google Hotels untuk 2 dewasa (IDR). Tanggal menginap diperbarui dinamis setiap malam untuk pantauan <strong>last-minute (besok)</strong> dan <strong>weekend peak</strong> mendatang.
+                  </p>
+                  {data?.nightlyHeartbeat && (
+                    <div className="mt-2.5 rounded-lg border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2 text-xs text-[#0369a1] flex items-center justify-between gap-2">
+                      <span>🤖 <strong>Laporan Otomasi Malam:</strong> {data.nightlyHeartbeat.summary}</span>
+                      <span className="shrink-0 text-[11px] font-mono opacity-80">Sync: {new Date(data.nightlyHeartbeat.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB</span>
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void refreshRates()}
-                  disabled={refreshingRates}
-                  className="rounded-lg border border-[#183334] px-3.5 py-2 text-xs font-semibold text-[#183334] hover:bg-[#183334] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {refreshingRates ? "Memperbarui Tarif Pasar…" : "Perbarui Harga Sekarang"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRateHistory(!showRateHistory)}
+                    className="rounded-lg border border-[#cbd5e1] bg-slate-50 px-3 py-2 text-xs font-semibold text-[#334155] hover:bg-slate-100"
+                  >
+                    {showRateHistory ? "Tutup Riwayat Waktu" : "Lihat Riwayat Pergerakan Tarif"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void refreshRates()}
+                    disabled={refreshingRates}
+                    className="rounded-lg border border-[#183334] bg-[#183334] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#22484a] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {refreshingRates ? "Memperbarui Tarif Pasar…" : "Perbarui Harga Sekarang"}
+                  </button>
+                </div>
               </div>
+
+              {/* Tabel Tarif Terkini */}
               {data?.marketRateComparison?.length ? (
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full min-w-[860px] text-left text-sm">
-                    <thead className="bg-[#f4f7fa]">
+                    <thead className="bg-[#f8fafc] text-[#334155] border-y border-[#e2e8f0]">
                       <tr>
-                        {["Hotel", "Tanggal menginap", "Tamu", "Harga terendah terlihat", "Selisih dari Sanghyang", "Sumber"].map((h) => (
-                          <th key={h} className="px-3 py-3">{h}</th>
+                        {["Hotel", "Tanggal Menginap", "Tamu", "Harga Terendah Terlihat", "Selisih dari Sanghyang", "Terpantau (Observed)", "Sumber"].map((h) => (
+                          <th key={h} className="px-3.5 py-3 font-semibold">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-[#f1f5f9]">
                       {data.marketRateComparison.map((x) => (
-                        <tr key={`${x.hotel}-${x.checkIn}`} className={x.hotel === "Sanghyang" ? "bg-[#f4fbe9]" : ""}>
-                          <td className="px-3 py-3 font-semibold">{x.hotel}</td>
-                          <td className="px-3 py-3">{fmt(x.checkIn)} – {fmt(x.checkOut)}</td>
-                          <td className="px-3 py-3">{x.guests} dewasa</td>
-                          <td className="px-3 py-3">{x.currency} {x.price.toLocaleString("id-ID")}</td>
-                          <td className={`px-3 py-3 font-semibold ${x.difference == null || x.difference === 0 ? "text-[#183334]" : x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>
+                        <tr key={`${x.hotel}-${x.checkIn}`} className={x.hotel === "Sanghyang" ? "bg-[#f4fbe9]/70 font-medium" : "hover:bg-slate-50/60"}>
+                          <td className="px-3.5 py-3">
+                            <span className="font-semibold text-[#0f172a]">{x.hotel}</span>
+                            {x.hotel === "Sanghyang" && (
+                              <span className="ml-2 rounded bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#15803d]">Baseline</span>
+                            )}
+                          </td>
+                          <td className="px-3.5 py-3 text-[#334155]">
+                            <div className="font-medium">{fmt(x.checkIn)} – {fmt(x.checkOut)}</div>
+                            <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Dinamis</span>
+                          </td>
+                          <td className="px-3.5 py-3 text-[#64748b]">{x.guests} dewasa</td>
+                          <td className="px-3.5 py-3 font-bold text-[#0f172a]">{x.currency} {x.price.toLocaleString("id-ID")}</td>
+                          <td className={`px-3.5 py-3 font-semibold ${x.difference == null || x.difference === 0 ? "text-[#183334]" : x.difference > 0 ? "text-[#b54747]" : "text-[#22745e]"}`}>
                             {x.difference == null || x.difference === 0 ? "Patokan Sanghyang" : `${x.difference > 0 ? "+" : ""}${x.currency} ${x.difference.toLocaleString("id-ID")}`}
                           </td>
-                          <td className="px-3 py-3"><a className="text-[#1b6c68] underline" href={x.sourceUrl} target="_blank" rel="noreferrer">Google Hotels</a></td>
+                          <td className="px-3.5 py-3 text-xs text-[#64748b]">
+                            {x.observedAt ? new Date(x.observedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Terkini"}
+                          </td>
+                          <td className="px-3.5 py-3"><a className="text-[#1b6c68] font-semibold underline hover:text-[#134e4a]" href={x.sourceUrl} target="_blank" rel="noreferrer">Google Hotels</a></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1589,6 +1628,53 @@ export default function MarketIntelligencePage() {
               ) : (
                 <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada harga pasar tersimpan.</div>
               )}
+
+              {/* Tampilan Riwayat Pergerakan Tarif Waktu ke Waktu (Time-Series) */}
+              {showRateHistory && (
+                <div className="mt-5 border-t border-[#e2e8f0] pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-[#1e293b] flex items-center gap-1.5">
+                      <span>📈</span> Riwayat Time-Series Pergerakan Tarif Harian (Zero Data Loss)
+                    </h3>
+                    <span className="text-xs text-[#64748b]">Semua snapshot harian disimpan permanen tanpa penghapusan.</span>
+                  </div>
+                  {data?.marketRateHistory?.length ? (
+                    <div className="overflow-x-auto rounded-lg border border-[#e2e8f0]">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#f1f5f9] text-[#475569]">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">Waktu Pencatatan (Observed At)</th>
+                            <th className="px-3 py-2 font-semibold">Hotel</th>
+                            <th className="px-3 py-2 font-semibold">Tanggal Check-In</th>
+                            <th className="px-3 py-2 font-semibold">Tarif Terpantau</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#e2e8f0]">
+                          {data.marketRateHistory.map((h, idx) => (
+                            <tr key={`${h.hotel}-${h.observedAt}-${idx}`} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-mono text-[#64748b]">
+                                {new Date(h.observedAt).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
+                              </td>
+                              <td className="px-3 py-2 font-semibold text-[#1e293b]">{h.hotel}</td>
+                              <td className="px-3 py-2 text-[#334155]">{fmt(h.checkIn)}</td>
+                              <td className="px-3 py-2 font-bold text-[#0f766e]">
+                                {h.currency} {h.price.toLocaleString("id-ID")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-3 text-xs text-[#64748b] bg-slate-50 rounded">Belum ada histori data tambahan.</div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 flex items-center justify-between text-[11px] text-[#64748b] border-t border-slate-100 pt-2.5">
+                <span>Data tersimpan langsung di Supabase Cloud. Untuk menyinkronkan file lokal di laptop: jalankan <code className="bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-mono">npm run sync:cloud-to-local</code></span>
+                <span className="font-semibold text-emerald-700">✓ Sistem Autonomous Crawl Aktif</span>
+              </div>
             </section>
 
             {/* KALKULATOR SIMULASI TARIF DINAMIS & OPTIMASI REVPAR */}
