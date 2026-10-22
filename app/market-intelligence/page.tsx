@@ -2,7 +2,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { sanghyangProfile } from "@/lib/market/sanghyang-profile";
 import { comparisonProfiles } from "@/lib/market/competitor-comparison";
 
 type Period = "30d" | "90d" | "year";
@@ -144,16 +143,6 @@ const outletTabs = [
 const fmt = (v: string) =>
   new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(v));
 
-const categoryLabel: Record<string, string> = {
-  "F&B": "Kuliner",
-  Events: "Acara",
-  Entertainment: "Hiburan",
-  Competitors: "Kompetitor",
-  Promotions: "Promo",
-  Reviews: "Ulasan",
-  Destinations: "Destinasi",
-};
-
 const sourceLabel = (source: string) => ({
   "Competitor registry": "Daftar kompetitor",
   "Google Hotels": "Google Hotels",
@@ -291,7 +280,6 @@ export default function MarketIntelligencePage() {
   // Selected Outlet Details
   const outlets = data?.outlets ?? [];
   const activeOutlet = outlets.find((o) => o.key === selectedOutlet);
-  const displayedOutlets = selectedOutlet === "all" ? outlets : outlets.filter((o) => o.key === selectedOutlet);
 
   // All reviews across selected outlets
   const outletReviews = (selectedOutlet === "all"

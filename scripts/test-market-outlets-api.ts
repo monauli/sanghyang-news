@@ -27,7 +27,7 @@ async function testMarketOutletsApi() {
   assert.ok(Array.isArray(data.outlets), 'Outlets should be an array');
   assert.ok(data.outlets.length >= 6, 'Should have at least 6 Sanghyang outlets');
 
-  const dbc = data.outlets.find((o: any) => o.key === 'dragon-beach-club');
+  const dbc = data.outlets.find((o: { key: string; reviews: unknown[]; findings: unknown[] }) => o.key === 'dragon-beach-club');
   assert.ok(dbc, 'Dragon Beach Club outlet should exist');
   assert.ok(dbc.reviews.length > 0, 'Dragon Beach Club should have reviews');
   assert.ok(dbc.findings.length > 0, 'Dragon Beach Club should have actionable findings');
@@ -47,3 +47,4 @@ testMarketOutletsApi()
     process.exit(1);
   })
   .finally(() => db.$disconnect());
+
