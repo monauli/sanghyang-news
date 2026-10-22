@@ -1,0 +1,1 @@
+"""Local business research application."""

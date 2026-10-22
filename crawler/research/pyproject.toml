@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crawlai-business-research"
+version = "0.1.0"
+description = "Local evidence-based business sentiment research with Crawl4AI and Codex"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "crawl4ai==0.9.4", "fastapi==0.142.2", "uvicorn==0.54.0",
+  "dbos==3.2.0", "pydantic-settings==2.15.0",
+  "httpx==0.28.1",
+]
+
+[project.scripts]
+crawlai-dashboard = "app.main:serve"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.12", "basedpyright>=1.31", "vulture>=2.14",
+  "pytest>=8", "pytest-cov>=6", "bandit>=1.8", "pip-audit>=2.9", "build>=1.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 110
+exclude = [".agents", "graphify-out", "data", "artifacts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.basedpyright]
+include = ["app"]
+exclude = [".venv", ".agents", "data", "artifacts"]
+typeCheckingMode = "standard"
+pythonVersion = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.vulture]
+paths = ["app"]
+min_confidence = 100
+
+[tool.coverage.run]
+source = ["app"]

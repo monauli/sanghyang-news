@@ -376,3 +376,50 @@ vercel.json              konfigurasi serverless Vercel (region sin1, memory 1769
   1 newsletter/bulan.
 - **Ringkasan Gemini disaring ulang** oleh sanitizer di `lib/gemini.ts` untuk
   membuang kalimat sisa AI seperti "This translation preserves…". Jangan dihapus.
+
+
+---
+
+## Modul Terpadu: CrawlAI Research Engine (`crawler/research/`)
+
+Repositori `SANGHYANG-NEWS` kini menyatukan 3 pilar sistem intelijen pariwisata terpadu (*All-in-One Super-Repository*):
+1. **Newsletter Bulanan (`app/`):** Pengumpulan berita RSS regional Anyer–Banten, kurasi manual, ringkasan Gemini AI, dan ekspor cetak PDF berstandar editorial resolusi tinggi.
+2. **Market Intelligence & Multi-Outlet (`app/market-intelligence`):** Dashboard eksekutif berbasis PostgreSQL Supabase dengan grounding ulasan riil pelanggan (Google Maps, Traveloka, Agoda, TripAdvisor, Facebook), pelacak tarif Google Hotels, matriks komparasi head-to-head, dan rekomendasi aksi operasional per unit bisnis (Kamar, Sunset Grill, Dragon Beach Club, D'Bistro, D'Bar, D'Spa).
+3. **CrawlAI Research Engine (`crawler/research/`):** Mesin *deep web crawler* berbasis Python (Crawl4AI + Playwright + SQLite durabel) untuk ekstraksi sentimen multi-kanal, penambangan ulasan kompetitor Anyer–Carita, dan analisis aspek mendalam.
+
+### 1. Menjalankan CrawlAI Research Engine Lokal
+
+```powershell
+cd crawler/research
+uv sync --dev
+uv run playwright install chromium
+uv run crawlai-dashboard
+```
+
+- Buka dashboard riset lokal di browser pada port loopback yang ditampilkan terminal.
+- Masukkan URL entitas bisnis / kompetitor baru untuk memulai siklus perayapan sentimen.
+- Bukti ulasan dan entitas disimpan secara persisten di database internal `crawler/research/data/research.sqlite`.
+
+### 2. Sinkronisasi Data Riset ke Supabase Satu Pintu
+
+Setelah siklus perayapan selesai di mesin crawler internal, sinkronisasikan seluruh ulasan dan temuan baru ke PostgreSQL Supabase cukup dengan satu perintah dari root proyek:
+
+```powershell
+npm run sync:crawlai
+```
+
+Alur kerja perintah di atas:
+1. `scripts/export_crawlai_for_ingest.py` membaca `crawler/research/data/research.sqlite` dan mengekspor run riset terbaru ke `data/crawlai_ingest_data.json`.
+2. `scripts/ingest-crawlai-evidence.ts` membaca data JSON dan memperbarui tabel `CompetitorReview` serta `MarketInsight` di Supabase secara atomik dan terlindungi OCC (*Optimistic Concurrency Control*).
+
+### 3. Pengujian Kualitas & Kepatuhan DevSecOps 2026
+
+Repositori ini menerapkan standar integritas ketat *The 4 Zeros* (Zero Mock Data, Zero Hardcode, Zero Fallback, Zero Data Loss):
+
+```powershell
+# Uji seluruh gerbang kualitas .agents 2026 (OCC, Zero Hardcode, Zero Mock Data, Grounding Integrity)
+npm run test:all
+
+# Uji scraper berita & pelacak tarif Google Hotels
+npm run test:market
+```

@@ -14,7 +14,10 @@
     "health": "curl -f http://localhost:3001/api/health",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test:market": "tsx scripts/test-market-scrapers.ts",
+    "test:all": "tsx scripts/test-market-audit-compliance.ts && tsx scripts/test-market-outlets-api.ts",
+    "sync:crawlai": "python scripts/export_crawlai_for_ingest.py && node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/ingest-crawlai-evidence.ts"
   },
   "dependencies": {
     "@extractus/article-extractor": "^9.0.1",

@@ -1,15 +1,30 @@
 import sqlite3
 import json
 import os
+import sys
 
-db_path = r"D:\WORKSPACE\PROJECTS\CRAWLAIBWP\data\research.sqlite"
-output_path = r"d:\WORKSPACE\PROJECTS\SANGHYANG-NEWS\data\crawlai_ingest_data.json"
+# Look for SQLite database in internal crawler directory first, fallback to external CRAWLAIBWP
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+internal_db = os.path.join(PROJECT_ROOT, "crawler", "research", "data", "research.sqlite")
+external_db = r"D:\WORKSPACE\PROJECTS\CRAWLAIBWP\data\research.sqlite"
+
+if os.path.exists(internal_db):
+    db_path = internal_db
+elif os.path.exists(external_db):
+    db_path = external_db
+else:
+    raise FileNotFoundError(f"Database research.sqlite tidak ditemukan di {internal_db} maupun {external_db}")
+
+output_path = os.path.join(PROJECT_ROOT, "data", "crawlai_ingest_data.json")
 
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 conn = sqlite3.connect(db_path)
 cur = conn.cursor()
 
-latest_run_id = 'a50e51f7-94a5-4584-85a2-50f6d34328a7'
+# Get latest run_id dynamically, fallback to specific known run_id
+cur.execute('SELECT id FROM runs ORDER BY id DESC LIMIT 1')
+row = cur.fetchone()
+latest_run_id = row[0] if row else 'a50e51f7-94a5-4584-85a2-50f6d34328a7'
 
 # 1. Fetch Run Report
 cur.execute('SELECT report_json FROM runs WHERE id=?', (latest_run_id,))

@@ -366,6 +366,9 @@ async function main() {
         },
       });
       reviewsInserted++;
+      if (reviewsInserted % 50 === 0 || reviewsInserted === rawJson.evidence.length) {
+        console.log(`[Ingest] Progres ulasan: ${reviewsInserted}/${rawJson.evidence.length} diproses...`);
+      }
     } catch (err) {
       console.error(`[Ingest] Gagal menyimpan review ${ev.id}:`, err);
     }

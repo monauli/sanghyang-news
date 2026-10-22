@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CrawlAI — Riset sentimen bisnis</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <section class="auth-view" id="login-view" aria-labelledby="login-title" hidden>
+    <form class="auth-card" id="login-form">
+      <div class="logo-badge" aria-hidden="true">SI</div>
+      <h1 id="login-title">Masuk ke riset sentimen</h1>
+      <p>Akses dashboard internal menggunakan akun admin.</p>
+      <label for="login-username">Nama pengguna</label>
+      <input id="login-username" name="username" autocomplete="username" value="admin" required>
+      <label for="login-password">Kata sandi</label>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+      <p class="auth-error" id="login-error" role="alert" hidden></p>
+      <button class="primary" id="login-button" type="submit">Masuk ke Dashboard</button>
+    </form>
+  </section>
+
+  <div id="app-shell" hidden>
+  <a class="skip-link" href="#main">Langsung ke konten</a>
+
+  <!-- Header Bergaya Artha Megah Business Graph (2026 Engine) -->
+  <header>
+    <div class="brand">
+      <div class="logo-badge">SI</div>
+      <div>
+        <h1>Riset sentimen bisnis</h1>
+        <p id="source-explainer">Sumber publik adalah ulasan atau komentar yang bisa diakses umum di OTA, Google Maps, dan media sosial.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="view-modes" role="tablist" aria-label="Mode Tampilan">
+        <button class="view-btn active" id="btnGrid" type="button" data-view="grid">
+          <span>📋 Unit Bisnis</span>
+        </button>
+        <button class="view-btn" id="btnFeed" type="button" data-view="feed">
+          <span>💬 Feed Komentar &amp; Ulasan</span>
+        </button>
+        <button class="view-btn" id="btnAnalytics" type="button" data-view="analytics">
+          <span>📊 Dasbor Analitik</span>
+        </button>
+        <button class="view-btn" id="btnNetwork" type="button" data-view="network">
+          <span>🌿 Peta Relasi Graf</span>
+        </button>
+      </div>
+
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"/></svg>
+        <input type="text" id="searchInput" placeholder="Cari outlet, kompetitor, komentar..." aria-label="Cari entitas">
+      </div>
+
+      <div class="header-select-wrap">
+        <select id="select-display-unit" class="select-display-unit" aria-label="Pilih Unit Bisnis atau Kompetitor">
+          <option value="">Ringkasan portofolio</option>
+        </select>
+      </div>
+
+      <div class="job-actions" id="job-controls">
+        <select id="job-select" class="header-job-select" aria-label="Riwayat Riset"></select>
+        <button type="button" class="btn" id="refresh-button" title="Perbarui Data">🔄</button>
+        <button type="button" class="btn" id="logout-button" hidden>Keluar</button>
+        <div class="exports-dropdown">
+          <button type="button" class="btn" id="btnExportMenu">📥 Ekspor</button>
+          <div class="exports-menu" id="exportsMenu">
+            <div class="export-unit-picker">
+              <label for="export-unit-select">Pilih unit bisnis:</label>
+              <select id="export-unit-select" class="export-select" aria-label="Pilih unit untuk laporan">
+                <option value="">Semua unit (Laporan Portofolio)</option>
+              </select>
+            </div>
+            <div class="export-actions-list">
+              <a id="export-view-html" class="export-action-link primary-action" href="#" target="_blank">📄 Tampilkan Laporan (Tab Baru)</a>
+              <a id="export-html" class="export-action-link" href="#" download>📥 Unduh Laporan HTML</a>
+              <a id="export-csv" class="export-action-link" href="#" download>📊 Unduh Data CSV</a>
+              <a id="export-json" class="export-action-link" href="#" download>⚙️ Unduh Data JSON</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="category-filter-bar" id="categoryFilterBar" aria-label="Pilih unit bisnis"><div id="unit-selector-buttons" class="unit-selector-buttons"></div></nav>
+
+  <main id="main" tabindex="-1">
+    <!-- Form Riset (Tetap Ada Untuk Kompatibilitas Sistem, Disembunyikan Sesuai Permintaan User) -->
+    <form class="research-form" id="research-form" hidden>
+      <input id="business-url" name="url" type="url" value="https://sanghyang.com">
+      <select id="period-months" name="period_months"><option value="12" selected>1 tahun terakhir</option></select>
+      <textarea id="competitor-urls" name="competitor_urls"></textarea>
+      <button class="primary" id="start-button" type="submit">Mulai riset</button>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </form>
+
+    <div class="status-line-compact" aria-live="polite">
+      <span class="status-indicator-dot"></span>
+      <p id="status-text">Riset sentimen bisnis aktif · Engine Antigravity (Crawl4AI + SQLite + DBOS)</p>
+      <span class="status-label" id="job-status" hidden></span>
+      <span class="run-meta" id="run-meta" hidden></span>
+    </div>
+
+    <p class="notice error-notice" id="connection-error" role="alert" hidden></p>
+    <p class="notice" id="run-warning" hidden></p>
+
+    <!-- Legacy outlet pills container for synced state -->
+    <div id="outlet-filter-bar" hidden><div id="outlet-pills"></div></div>
+
+    <section id="view-grid" class="main-tab-view" aria-label="Ringkasan bisnis">
+      <div id="portfolio-overview">
+        <div class="section-heading"><div><h2>Ringkasan portofolio</h2><p id="portfolio-caption" class="section-note">Pilih unit bisnis untuk melihat bukti, perkembangan, dan pembandingnya.</p></div></div>
+        <div class="metrics portfolio-metrics" aria-label="Ringkasan seluruh unit">
+          <div class="metric"><span>Opini pelanggan dalam periode</span><strong id="portfolio-customer">?</strong></div>
+          <div class="metric"><span>Sentimen positif</span><strong id="portfolio-positive">?</strong></div>
+          <div class="metric"><span>Sentimen negatif</span><strong id="portfolio-negative">?</strong></div>
+        </div>
+        <div class="portfolio-split-grid">
+          <div class="split-section internal-section">
+            <div class="split-header">
+              <span class="badge-internal-tag">👑 UNIT BISNIS KITA</span>
+              <h3>Sanghyang Indah Spa Resort</h3>
+              <p class="section-note">6 unit operasional (Resor, Boga Bahari, Nightlife, Restoran, Onsen Belerang, Karaoke).</p>
+            </div>
+            <div id="unit-grid" class="unit-grid" aria-label="Unit Bisnis Kita"><p class="empty-content">Memuat unit bisnis dari riset.</p></div>
+          </div>
+
+          <div class="split-section competitor-section">
+            <div class="split-header">
+              <span class="badge-competitor-tag">⚔️ BENCHMARK KOMPETITOR</span>
+              <h3>Kompetitor Pembanding Anyer</h3>
+              <p class="section-note">9 entitas pembanding sepadan untuk evaluasi fasilitas, tarif, dan kepuasan.</p>
+            </div>
+            <div id="competitor-grid" class="unit-grid" aria-label="Benchmark Kompetitor"><p class="empty-content">Memuat data kompetitor.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <section id="entity-detail" class="entity-detail" aria-labelledby="detail-title" hidden>
+        <div class="detail-toolbar"><button class="secondary" id="back-to-portfolio" type="button">Semua unit</button><span id="detail-period" class="muted"></span></div>
+        <div class="entity-heading"><div><p id="detail-kind" class="detail-eyebrow"></p><h2 id="detail-title"></h2><p id="detail-description" class="section-note"></p></div></div>
+        <div class="metrics" aria-label="Ringkasan unit terpilih">
+          <div class="metric"><span>Opini pelanggan</span><strong id="detail-customer">?</strong></div>
+          <div class="metric"><span>Positif</span><strong id="detail-positive">?</strong><small id="detail-positive-rate"></small></div>
+          <div class="metric"><span>Negatif</span><strong id="detail-negative">?</strong><small id="detail-negative-rate"></small></div>
+        </div>
+        <div class="unit-detail-columns">
+          <section class="detail-panel"><h3>Perkembangan opini pelanggan</h3><p id="unit-trend-note" class="section-note"></p><div id="unit-trend-chart" class="monthly-chart"></div></section>
+          <section class="detail-panel"><h3>Temuan untuk ditindaklanjuti</h3><div id="unit-findings" class="detail-list"></div></section>
+        </div>
+        <section class="detail-panel"><div class="comparison-heading"><div><h3>Perbandingan kompetitor langsung</h3><p class="section-note">Perbandingan head-to-head langsung dengan seluruh kompetitor pembanding tanpa dropdown.</p></div></div><div id="unit-comparisons" class="comparison-list"></div></section>
+      </section>
+    </section>
+
+    <!-- VIEW 2: FEED KOMENTAR & ULASAN NETIZEN (MULTI-SALURAN) -->
+    <section id="view-feed" class="main-tab-view" aria-label="Feed Komentar dan Ulasan" hidden>
+      <div class="feed-toolbar">
+        <div>
+          <h2>💬 Feed Komentar &amp; Ulasan Pelanggan</h2>
+          <p class="section-note">Ulasan otentik bertanggal dari media sosial &amp; platform publik (IG, TikTok, FB, YT, Google Maps, Tripadvisor, OTA).</p>
+        </div>
+        <div class="feed-filters-group">
+          <div class="feed-segmented-nav" role="group" aria-label="Kategori feed ulasan">
+            <button type="button" class="feed-segment-btn active" id="btnFeedInternal" data-category="internal">Unit Bisnis</button>
+            <button type="button" class="feed-segment-btn" id="btnFeedCompetitors" data-category="competitor">Kompetitor</button>
+          </div>
+          <div class="field">
+            <label for="feed-filter-category">Pilih unit atau kompetitor</label>
+            <select id="feed-filter-category" aria-label="Filter entitas ulasan">
+              <option value="">Memuat entitas…</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="feed-filter-platform">Platform</label>
+            <select id="feed-filter-platform" aria-label="Filter platform">
+              <option value="">Semua platform</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Facebook">Facebook</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Google Maps">Google Maps</option>
+              <option value="Tripadvisor">Tripadvisor</option>
+              <option value="Traveloka">Traveloka</option>
+              <option value="Agoda">Agoda</option>
+              <option value="Booking.com">Booking.com</option>
+              <option value="Trip.com">Trip.com</option>
+              <option value="tiket.com">tiket.com</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="feed-filter-sentiment">Sentimen</label>
+            <select id="feed-filter-sentiment" aria-label="Filter sentimen">
+              <option value="">Semua sentimen</option>
+              <option value="positive">🟢 Positif</option>
+              <option value="negative">🔴 Negatif</option>
+              <option value="mixed">🟡 Campuran</option>
+              <option value="neutral">⚪ Netral</option>
+            </select>
+          </div>
+          <span id="feed-count-badge" class="feed-count-badge">Memuat feed...</span>
+        </div>
+      </div>
+      <div id="commentFeedGrid" class="comment-feed-grid"></div>
+    </section>
+
+    <!-- VIEW 3: PETA RELASI GRAF (VISUALISASI EKOSISTEM INTERAKTIF) -->
+    <section id="view-network" class="main-tab-view" aria-label="Peta Relasi Graf" hidden>
+      <div class="network-toolbar">
+        <span class="network-title">Relasi unit bisnis dan kompetitor</span>
+        <div class="network-legend">
+          <span class="legend-item"><span class="chip-dot chip-dot-blue"></span> Unit bisnis</span>
+          <span class="legend-item"><span class="chip-dot chip-dot-rose"></span> Kompetitor</span>
+        </div>
+      </div>
+      <div id="networkCanvasContainer" class="network-canvas-container">
+        <!-- Canvas graf native interaktif dengan node & edge responsif -->
+        <canvas id="ecosystemCanvas"></canvas>
+      </div>
+      <div class="network-node-detail" id="nodeDetailBox">
+        <h4 id="nodeDetailTitle">Klik salah satu node di atas untuk melihat detail relasi</h4>
+        <p id="nodeDetailDesc">Pilih unit untuk melihat kompetitor yang dipetakan dan ukuran sampelnya.</p>
+      </div>
+    </section>
+
+    <!-- VIEW 3: DASBOR ANALITIK & ULASAN -->
+    <section id="view-analytics" class="main-tab-view" aria-label="Dasbor Analitik" hidden>
+      <div class="metrics" aria-label="Ringkasan bukti pelanggan">
+        <div class="metric"><span>Bukti pelanggan</span><strong id="metric-customer">—</strong><small id="metric-customer-note"></small></div>
+        <div class="metric"><span>Positif</span><strong id="metric-positive" class="positive-text">—</strong><small id="metric-positive-note"></small></div>
+        <div class="metric"><span>Negatif</span><strong id="metric-negative" class="negative-text">—</strong><small id="metric-negative-note"></small></div>
+      </div>
+      <p class="report-summary" id="report-summary" hidden></p>
+      
+      <h3>Distribusi Sentimen</h3>
+      <div id="sentiment-bars" class="sentiment-bars"></div>
+
+      <div class="analytics-tables-grid">
+        <div class="analytics-table-col">
+          <div class="table-header-badge">
+            <span class="badge-internal-tag">👑 UNIT BISNIS KITA</span>
+            <h3 id="internal-table-title">Sentimen Unit Bisnis Kita (Sanghyang)</h3>
+          </div>
+          <div class="table-frame">
+            <table id="summary-table">
+              <thead><tr><th>Unit bisnis</th><th>Bukti</th><th>Positif</th><th>Negatif</th><th>Status</th></tr></thead>
+              <tbody id="summary-rows"><tr><td class="empty-cell" colspan="5">Data akan muncul setelah riset selesai.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="analytics-table-col">
+          <div class="table-header-badge">
+            <span class="badge-competitor-tag">⚔️ BENCHMARK KOMPETITOR</span>
+            <h3 id="competitor-table-title">Sentimen Benchmark Kompetitor Anyer</h3>
+          </div>
+          <div class="table-frame">
+            <table id="competitor-summary-table">
+              <thead><tr><th>Kompetitor</th><th>Relasi</th><th>Bukti</th><th>Positif</th><th>Negatif</th><th>Status</th></tr></thead>
+              <tbody id="competitor-summary-rows"><tr><td class="empty-cell" colspan="6">Data kompetitor akan muncul setelah riset selesai.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <h3>Sentimen per Platform Ulasan</h3>
+      <div class="table-frame"><table><thead><tr><th>Platform</th><th>Bukti</th><th>Positif</th><th>Negatif</th><th>Netral</th><th>Campuran</th><th>Belum jelas</th></tr></thead><tbody id="platform-rows"></tbody></table></div>
+
+      <h3>Perkembangan opini pelanggan per bulan</h3>
+      <p id="weekly-note" class="section-note"></p>
+      <div id="weekly-chart" class="weekly-chart"></div>
+      <details class="weekly-details"><summary>Lihat rincian angka per bulan</summary><div class="table-frame"><table><thead><tr><th>Bulan</th><th>Opini</th><th>Positif</th><th>Negatif</th><th>Campuran</th><th>Netral</th><th>Belum jelas</th></tr></thead><tbody id="weekly-rows"></tbody></table></div></details>
+
+      <div class="recommendation-columns">
+        <section><h2>Perlu Diperbaiki</h2><div class="summary-findings" id="summary-improve"><p class="empty-content">Menunggu bukti pelanggan.</p></div></section>
+        <section><h2>Perlu Dipertahankan</h2><div class="summary-findings" id="summary-maintain"><p class="empty-content">Menunggu bukti pelanggan.</p></div></section>
+      </div>
+
+      <div class="section-heading"><h2>Rekomendasi Strategis Terperinci</h2><div class="field"><label class="sr-only" for="finding-action">Jenis rekomendasi</label><select id="finding-action"><option value="">Semua tindakan</option><option value="improve">Perlu diperbaiki</option><option value="maintain">Perlu dipertahankan</option><option value="investigate">Perlu ditelusuri</option></select></div></div>
+      <div id="findings" class="detail-list"></div>
+    </section>
+
+    <!-- VIEW 4: BUKTI & SUMBER -->
+    <section id="view-evidence" class="main-tab-view" aria-label="Bukti dan Sumber" hidden>
+      <div class="section-heading"><h2>Bukti &amp; Sumber Terverifikasi</h2><span id="evidence-count" class="muted"></span></div>
+      <div class="filters" aria-label="Filter bukti">
+        <div class="field"><label for="filter-entity">Unit bisnis / Kompetitor</label><select id="filter-entity"><option value="">Semua unit &amp; kompetitor</option></select></div>
+        <div class="field"><label for="filter-platform">Platform</label><select id="filter-platform"><option value="">Semua platform</option></select></div>
+        <div class="field"><label for="filter-sentiment">Sentimen</label><select id="filter-sentiment"><option value="">Semua sentimen</option><option value="positive">🟢 Positif</option><option value="negative">🔴 Negatif</option><option value="mixed">🟡 Campuran</option><option value="neutral">⚪ Netral</option><option value="unclear">Belum jelas</option></select></div>
+        <div class="field"><label for="filter-kind">Jenis bukti</label><select id="filter-kind"><option value="customer" selected>💬 Opini &amp; Komentar Pelanggan (Sentimen Nyata)</option><option value="">Semua jenis</option><option value="owner_content">⚠️ Konten/Klaim Pemilik (Bukan Sentimen)</option><option value="editorial">Artikel &amp; Video Liputan</option></select></div>
+        <div class="field"><label for="filter-window">Tanggal</label><select id="filter-window"><option value="">Semua tanggal</option><option value="in" selected>Dalam periode (12 Bulan)</option><option value="out">Di luar periode</option><option value="undated">Tanpa tanggal</option></select></div>
+      </div>
+      <p class="section-note">Filter berlaku pada daftar bukti. Angka ringkasan tetap memakai seluruh opini pelanggan unik dalam periode 12 bulan terakhir.</p>
+      <div id="evidence-list" class="evidence-list"></div>
+      <div class="list-controls" id="evidence-more" hidden><button type="button" class="secondary" id="more-button">Tampilkan lebih banyak</button></div>
+
+      <h3>Status sumber publik</h3>
+      <div class="table-frame"><table><thead><tr><th>Platform / Unit</th><th>Sumber Publik</th><th>Status</th><th>Keterangan</th></tr></thead><tbody id="source-rows"></tbody></table></div>
+    </section>
+
+    <!-- VIEW 5: GALERI 125 ASET MEDIA -->
+    <section id="view-media" class="main-tab-view" aria-label="Galeri Media Medsos" hidden>
+      <div class="section-heading">
+        <h2>Koleksi 125 Aset Media Medsos (Crawl4AI Engine)</h2>
+        <span class="muted">125 Media Unik · Deduplikasi SHA-256 Berhasil</span>
+      </div>
+      <p class="section-note">Media yang berhasil diambil dari sumber publik pada riset terpilih.</p>
+      <div class="media-filter-row" id="media-filter-row"></div>
+      <div class="media-gallery-grid" id="mediaTabGalleryGrid"></div>
+    </section>
+  </main>
+
+  <footer class="stats-footer"><span>Analisis memakai bukti publik bertanggal dalam periode riset.</span><span>Temuan bukan sensus seluruh pelanggan atau internet.</span></footer>
+  </div>
+</body>
+</html>
