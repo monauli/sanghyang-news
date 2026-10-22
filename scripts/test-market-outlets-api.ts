@@ -31,6 +31,10 @@ async function testMarketOutletsApi() {
   assert.ok(dbc, 'Dragon Beach Club outlet should exist');
   assert.ok(dbc.reviews.length > 0, 'Dragon Beach Club should have reviews');
   assert.ok(dbc.findings.length > 0, 'Dragon Beach Club should have actionable findings');
+  assert.ok(dbc.channelBreakdown, 'Dragon Beach Club should have channelBreakdown');
+  assert.ok(Array.isArray(dbc.topAspects), 'Dragon Beach Club should have topAspects array');
+  assert.ok(data.syncStatus, 'syncStatus should exist');
+  assert.ok(data.syncStatus.lastSyncAt, 'syncStatus.lastSyncAt should exist');
 
   assert.ok(Array.isArray(data.comparisons), 'Comparisons should be an array');
   assert.ok(data.comparisons.length >= 5, 'Should have at least 5 head-to-head comparisons');

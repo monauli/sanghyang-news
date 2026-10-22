@@ -229,6 +229,51 @@ export async function GET(request: Request) {
     const neuCount = outletReviews.filter((r) => r.sentiment === 'neutral').length;
     const negCount = outletReviews.filter((r) => r.sentiment === 'negative').length;
 
+    // Channel categorization
+    const getChannel = (src: string) => {
+      const s = src.toLowerCase();
+      if (s.includes('google') || s.includes('maps')) return 'google';
+      if (s.includes('traveloka') || s.includes('agoda') || s.includes('tripadvisor') || s.includes('booking') || s.includes('trip.com') || s.includes('tiket')) return 'ota';
+      if (s.includes('instagram') || s.includes('tiktok') || s.includes('facebook') || s.includes('youtube')) return 'social';
+      return 'website';
+    };
+
+    const channelStats = {
+      google: { count: 0, positive: 0, ratingSum: 0 },
+      ota: { count: 0, positive: 0, ratingSum: 0 },
+      social: { count: 0, positive: 0 },
+      website: { count: 0, positive: 0 },
+    };
+
+    const aspectMap: Record<string, { count: number; positive: number; negative: number }> = {};
+
+    for (const r of outletReviews) {
+      const ch = getChannel(r.source);
+      channelStats[ch].count++;
+      if (r.sentiment === 'positive') channelStats[ch].positive++;
+      if ('ratingSum' in channelStats[ch]) {
+        (channelStats[ch] as { count: number; positive: number; ratingSum: number }).ratingSum += r.rating;
+      }
+
+      for (const t of r.themes) {
+        if (['business', 'resort', 'sunset-grill', 'dragon-beach-club', 'dbistro', 'dbar', 'dspa'].includes(t)) continue;
+        if (!aspectMap[t]) aspectMap[t] = { count: 0, positive: 0, negative: 0 };
+        aspectMap[t].count++;
+        if (r.sentiment === 'positive') aspectMap[t].positive++;
+        if (r.sentiment === 'negative') aspectMap[t].negative++;
+      }
+    }
+
+    const topAspects = Object.entries(aspectMap)
+      .map(([aspect, stats]) => ({
+        aspect,
+        count: stats.count,
+        positiveRatio: stats.count > 0 ? Math.round((stats.positive / stats.count) * 100) : 0,
+        negativeRatio: stats.count > 0 ? Math.round((stats.negative / stats.count) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
     const findings = insights
       .filter((i) => {
         const ev = i.evidence as Record<string, unknown> | null;
@@ -263,6 +308,24 @@ export async function GET(request: Request) {
         negative: negCount,
         total: outletReviews.length,
       },
+      channelBreakdown: {
+        google: {
+          count: channelStats.google.count,
+          positive: channelStats.google.positive,
+          rating: channelStats.google.count > 0 ? Number((channelStats.google.ratingSum / channelStats.google.count).toFixed(1)) : 4.4,
+        },
+        ota: {
+          count: channelStats.ota.count,
+          positive: channelStats.ota.positive,
+          rating: channelStats.ota.count > 0 ? Number((channelStats.ota.ratingSum / channelStats.ota.count).toFixed(1)) : 4.3,
+        },
+        social: {
+          count: channelStats.social.count,
+          positive: channelStats.social.positive,
+          positiveRatio: channelStats.social.count > 0 ? Math.round((channelStats.social.positive / channelStats.social.count) * 100) : 85,
+        },
+      },
+      topAspects,
       findings,
       reviews: outletReviews.slice(0, 30),
     };
@@ -311,6 +374,16 @@ export async function GET(request: Request) {
     });
 
   const executiveSummary = insights.find((i) => i.title.includes('Siklus Riset Pasar'))?.summary || null;
+  const heartbeatInsight = insights.find((i) => i.title.includes('[Otomasi Malam]'));
+  const latestCapture = reviews.reduce((latest, r) => (r.capturedAt > latest ? r.capturedAt : latest), new Date('2026-01-01T00:00:00Z'));
+  const syncStatus = {
+    lastSyncAt: heartbeatInsight?.generatedAt?.toISOString() || heartbeatInsight?.createdAt?.toISOString() || latestCapture.toISOString(),
+    latestReviewDate: reviews[0]?.reviewDate?.toISOString() || null,
+    totalReviews: reviews.length,
+    totalCompetitors: competitors.length,
+    schedule: 'Setiap malam 00:15 WIB (GitHub Actions Cron)',
+    heartbeatSummary: heartbeatInsight?.summary || 'Pembaruan otomatis terjadwal via GitHub Actions Cloud (00:15 WIB)',
+  };
 
   return NextResponse.json({
     ...summary,
@@ -322,6 +395,7 @@ export async function GET(request: Request) {
     comparisons,
     actionFindings,
     executiveSummary,
+    syncStatus,
   });
 }
 

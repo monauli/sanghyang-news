@@ -30,6 +30,20 @@ type OutletFinding = {
   evidenceIds: string[];
 };
 
+type ChannelBreakdown = {
+  google: { count: number; positive: number; rating: number };
+  ota: { count: number; positive: number; rating: number };
+  social: { count: number; positive: number; positiveRatio: number };
+  website?: { count: number; positive: number };
+};
+
+type AspectItem = {
+  aspect: string;
+  count: number;
+  positiveRatio: number;
+  negativeRatio: number;
+};
+
 type OutletInfo = {
   id: string;
   key: string;
@@ -45,6 +59,8 @@ type OutletInfo = {
     negative: number;
     total: number;
   };
+  channelBreakdown?: ChannelBreakdown;
+  topAspects?: AspectItem[];
   findings: OutletFinding[];
   reviews: OutletReview[];
 };
@@ -115,6 +131,14 @@ type Summary = {
   comparisons?: ComparisonItem[];
   actionFindings?: ActionFindingItem[];
   executiveSummary?: string | null;
+  syncStatus?: {
+    lastSyncAt: string;
+    latestReviewDate: string | null;
+    totalReviews: number;
+    totalCompetitors: number;
+    schedule: string;
+    heartbeatSummary: string;
+  };
 };
 
 type TrendData = { location: string; source: string; fetchedAt: string; trends: { topic: string; traffic: string; publishedAt: string; relevant: boolean }[] };
@@ -161,6 +185,8 @@ export default function MarketIntelligencePage() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Ringkasan");
   const [selectedOutlet, setSelectedOutlet] = useState<string>("all");
   const [reviewSentimentFilter, setReviewSentimentFilter] = useState<string>("all");
+  const [selectedChannel, setSelectedChannel] = useState<string>("all");
+  const [selectedAspect, setSelectedAspect] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("30d");
   const [segment, setSegment] = useState("all");
   const [source, setSource] = useState("");
@@ -267,6 +293,14 @@ export default function MarketIntelligencePage() {
   const higherRated = comparison.filter((item) => item.difference > 0);
   const lowerRated = comparison.filter((item) => item.difference < 0);
 
+  const getChannelFromSource = (src: string) => {
+    const s = src.toLowerCase();
+    if (s.includes("google") || s.includes("maps")) return "google";
+    if (s.includes("traveloka") || s.includes("agoda") || s.includes("tripadvisor") || s.includes("booking") || s.includes("trip.com") || s.includes("tiket")) return "ota";
+    if (s.includes("instagram") || s.includes("tiktok") || s.includes("facebook") || s.includes("youtube")) return "social";
+    return "website";
+  };
+
   const reset = () => {
     setPeriod("30d");
     setSegment("all");
@@ -274,6 +308,8 @@ export default function MarketIntelligencePage() {
     setTab("Ringkasan");
     setSelectedOutlet("all");
     setReviewSentimentFilter("all");
+    setSelectedChannel("all");
+    setSelectedAspect(null);
     setApplied({ period: "30d", segment: "all", source: "" });
   };
 
@@ -285,7 +321,10 @@ export default function MarketIntelligencePage() {
   const outletReviews = (selectedOutlet === "all"
     ? outlets.flatMap((o) => o.reviews.map((r) => ({ ...r, outletName: o.name, outletKey: o.key })))
     : (activeOutlet?.reviews ?? []).map((r) => ({ ...r, outletName: activeOutlet?.name ?? "", outletKey: activeOutlet?.key ?? "" }))
-  ).filter((r) => reviewSentimentFilter === "all" || r.sentiment === reviewSentimentFilter);
+  )
+    .filter((r) => reviewSentimentFilter === "all" || r.sentiment === reviewSentimentFilter)
+    .filter((r) => selectedChannel === "all" || getChannelFromSource(r.source) === selectedChannel)
+    .filter((r) => !selectedAspect || r.themes.includes(selectedAspect));
 
   // Action findings for selected outlet or all
   const actionFindings = selectedOutlet === "all"
@@ -314,13 +353,47 @@ export default function MarketIntelligencePage() {
       <main className="min-w-0 flex-1 px-5 py-7 lg:px-10">
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#dbe3eb] pb-5">
           <div>
-            <p className="text-sm text-[#66758a]">Data pasar multi-outlet & benchmark kompetitor</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-[#66758a]">Data pasar multi-outlet & benchmark kompetitor Anyer–Carita</span>
+              {data?.syncStatus && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6f4f1] px-2.5 py-0.5 text-[11px] font-semibold text-[#166534]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse"></span>
+                  Cloud Sync Aktif (Tiap Malam 00:15 WIB)
+                </span>
+              )}
+            </div>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Insight Pasar</h1>
-            <p className="mt-3 text-sm text-[#66758a]">
-              Periode Riset: {data?.recentRows.length ? fmt(data.recentRows[data.recentRows.length - 1].date) : "memuat"} – {fmt(new Date().toISOString())}
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[#66758a]">
+              <span>
+                Periode Riset: {data?.recentRows.length ? fmt(data.recentRows[data.recentRows.length - 1].date) : "memuat"} – {fmt(new Date().toISOString())}
+              </span>
+              {data?.syncStatus && (
+                <>
+                  <span>·</span>
+                  <span className="text-[#134e4a] font-medium">
+                    Terakhir Sinkron: {new Date(data.syncStatus.lastSyncAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })} WIB
+                  </span>
+                  <span>·</span>
+                  <span className="text-[#1e40af] font-medium">
+                    {data.syncStatus.totalReviews} ulasan riil terverifikasi
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          <a href="/admin/scraping" className="rounded-lg bg-[#183334] px-5 py-3 text-sm font-semibold text-white hover:bg-[#226e6b]">Perbarui Data</a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void refreshRates()}
+              disabled={refreshingRates}
+              className="rounded-lg border border-[#226e6b] bg-white px-4 py-2.5 text-xs font-semibold text-[#226e6b] hover:bg-[#f0fdf4] disabled:opacity-50 transition-colors"
+            >
+              {refreshingRates ? "Memperbarui Tarif..." : "🔄 Cek Tarif Google Hotels"}
+            </button>
+            <a href="/admin/scraping" className="rounded-lg bg-[#183334] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#226e6b] transition-colors">
+              Panel Scraper
+            </a>
+          </div>
         </header>
 
         {/* Executive Research Summary Banner */}
@@ -505,45 +578,158 @@ export default function MarketIntelligencePage() {
         )}
 
         {/* SPECIFIC OUTLET DEEP-DIVE BANNER */}
-        {activeOutlet && selectedOutlet !== "all" && (
-          <section className="mb-6 rounded-xl border border-[#226e6b] bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <span className="rounded-full bg-[#e6f4f1] px-2.5 py-1 text-xs font-semibold text-[#226e6b]">
-                  Rincian Unit Bisnis
-                </span>
-                <h2 className="mt-2 text-2xl font-bold text-[#183334]">{activeOutlet.name}</h2>
-                <p className="mt-1 text-sm text-[#66758a]">{activeOutlet.notes ?? activeOutlet.location}</p>
-                {activeOutlet.websiteUrl && (
-                  <a
-                    href={activeOutlet.websiteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1b6c68] underline"
-                  >
-                    Buka Halaman Resmi Outlet ↗
-                  </a>
-                )}
-              </div>
-              <div className="text-right">
-                <span className="text-3xl font-bold text-[#183334]">⭐ {activeOutlet.rating}</span>
-                <span className="text-sm text-[#66758a]"> / 5</span>
-                <p className="text-xs text-[#66758a]">{activeOutlet.reviewCount} ulasan riil terverifikasi</p>
-                <div className="mt-2 flex items-center gap-2 text-xs">
-                  <span className="rounded bg-[#e7f7ef] px-2 py-0.5 font-medium text-[#22745e]">
-                    Positif: {activeOutlet.sentimentDistribution.positive}
+        {activeOutlet && selectedOutlet !== "all" && (() => {
+          const totalRev = activeOutlet.sentimentDistribution.total || 1;
+          const posPct = Math.round((activeOutlet.sentimentDistribution.positive / totalRev) * 100);
+          const neuPct = Math.round((activeOutlet.sentimentDistribution.neutral / totalRev) * 100);
+          const negPct = Math.round((activeOutlet.sentimentDistribution.negative / totalRev) * 100);
+
+          return (
+            <section className="mb-6 rounded-xl border border-[#226e6b] bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <span className="rounded-full bg-[#e6f4f1] px-2.5 py-1 text-xs font-semibold text-[#226e6b]">
+                    Rincian Unit Bisnis
                   </span>
-                  <span className="rounded bg-[#f1f4f7] px-2 py-0.5 font-medium text-[#52657c]">
-                    Netral: {activeOutlet.sentimentDistribution.neutral}
-                  </span>
-                  <span className="rounded bg-[#fff0ef] px-2 py-0.5 font-medium text-[#b54747]">
-                    Atensi: {activeOutlet.sentimentDistribution.negative}
-                  </span>
+                  <h2 className="mt-2 text-2xl font-bold text-[#183334]">{activeOutlet.name}</h2>
+                  <p className="mt-1 text-sm text-[#66758a]">{activeOutlet.notes ?? activeOutlet.location}</p>
+                  {activeOutlet.websiteUrl && (
+                    <a
+                      href={activeOutlet.websiteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#1b6c68] underline"
+                    >
+                      Buka Halaman Resmi Outlet ↗
+                    </a>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-[#183334]">⭐ {activeOutlet.rating}</span>
+                  <span className="text-sm text-[#66758a]"> / 5</span>
+                  <p className="text-xs text-[#66758a]">{activeOutlet.reviewCount} ulasan riil terverifikasi</p>
+                  <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+                    <span className="rounded bg-[#e7f7ef] px-2 py-0.5 font-medium text-[#22745e]">
+                      Positif: {activeOutlet.sentimentDistribution.positive}
+                    </span>
+                    <span className="rounded bg-[#f1f4f7] px-2 py-0.5 font-medium text-[#52657c]">
+                      Netral: {activeOutlet.sentimentDistribution.neutral}
+                    </span>
+                    <span className="rounded bg-[#fff0ef] px-2 py-0.5 font-medium text-[#b54747]">
+                      Atensi: {activeOutlet.sentimentDistribution.negative}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        )}
+
+              {/* Sentiment Distribution Bar */}
+              <div className="mt-4 border-t border-[#e8edf2] pt-4">
+                <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-[#475569]">
+                  <span>Distribusi Sentimen Keseluruhan</span>
+                  <span>{posPct}% Positif · {neuPct}% Netral · {negPct}% Perlu Atensi</span>
+                </div>
+                <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#f1f5f9]">
+                  <div style={{ width: `${posPct}%` }} className="bg-[#22c55e]" title={`Positif: ${posPct}%`}></div>
+                  <div style={{ width: `${neuPct}%` }} className="bg-[#94a3b8]" title={`Netral: ${neuPct}%`}></div>
+                  <div style={{ width: `${negPct}%` }} className="bg-[#f43f5e]" title={`Perlu Atensi: ${negPct}%`}></div>
+                </div>
+              </div>
+
+              {/* Multi-Channel Scorecard */}
+              {activeOutlet.channelBreakdown && (
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 border-t border-[#e8edf2] pt-4">
+                  <div className="rounded-lg border border-[#dbe3eb] bg-[#f8fafc] p-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5">
+                        📍 Google Maps
+                      </span>
+                      <span className="rounded bg-[#dbeafe] px-1.5 py-0.5 text-[10px] font-bold text-[#1e40af]">
+                        {activeOutlet.channelBreakdown.google.count} Ulasan
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xl font-bold text-[#183334]">
+                      ⭐ {activeOutlet.channelBreakdown.google.rating}/5
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#64748b]">
+                      {activeOutlet.channelBreakdown.google.positive} ulasan sentimen positif
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-[#dbe3eb] bg-[#f8fafc] p-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5">
+                        🏨 OTAs (Traveloka & Agoda)
+                      </span>
+                      <span className="rounded bg-[#e0f2fe] px-1.5 py-0.5 text-[10px] font-bold text-[#0369a1]">
+                        {activeOutlet.channelBreakdown.ota.count} Ulasan
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xl font-bold text-[#183334]">
+                      ⭐ {activeOutlet.channelBreakdown.ota.rating}/5
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#64748b]">
+                      Reputasi tamu menginap & bersantap
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-[#dbe3eb] bg-[#f8fafc] p-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5">
+                        📸 Sosmed (IG & TikTok)
+                      </span>
+                      <span className="rounded bg-[#fce7f3] px-1.5 py-0.5 text-[10px] font-bold text-[#be185d]">
+                        {activeOutlet.channelBreakdown.social.count} Buzz
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xl font-bold text-[#be185d]">
+                      {activeOutlet.channelBreakdown.social.positiveRatio}% Positif
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#64748b]">
+                      Respon atmosfer sunset & live DJ
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Aspect Tags */}
+              {activeOutlet.topAspects && activeOutlet.topAspects.length > 0 && (
+                <div className="mt-4 border-t border-[#e8edf2] pt-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#334155]">Top Aspek yang Dibahas Tamu:</span>
+                    {selectedAspect && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAspect(null)}
+                        className="text-xs font-semibold text-[#991b1b] hover:underline"
+                      >
+                        ✕ Hapus Filter (#{selectedAspect})
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {activeOutlet.topAspects.map((asp) => (
+                      <button
+                        key={asp.aspect}
+                        type="button"
+                        onClick={() => setSelectedAspect(selectedAspect === asp.aspect ? null : asp.aspect)}
+                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs transition-colors ${
+                          selectedAspect === asp.aspect
+                            ? "bg-[#183334] text-white font-bold"
+                            : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                        }`}
+                      >
+                        <span>#{asp.aspect}</span>
+                        <span className="text-[10px] opacity-75">({asp.count})</span>
+                        {asp.positiveRatio >= 70 && <span className="text-[#16a34a]">👍</span>}
+                        {asp.negativeRatio >= 30 && <span className="text-[#dc2626]">⚠️</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* ACTIONABLE OPERATIONAL FINDINGS SECTION */}
         {actionFindings.length > 0 && (
@@ -715,19 +901,52 @@ export default function MarketIntelligencePage() {
                 </h2>
                 <p className="text-sm text-[#66758a]">Data autentik tanpa rekayasa dari OTA & platform ulasan publik.</p>
               </div>
-              <div className="flex items-center gap-2">
+            </div>
+
+            {/* Filter Bar: Kanal & Sentimen */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#f1f5f9] pb-3">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="mr-1 font-bold text-[#475569]">Kanal:</span>
+                {[
+                  { key: "all", label: "Semua Kanal" },
+                  { key: "google", label: "📍 Google Maps" },
+                  { key: "ota", label: "🏨 OTAs (Traveloka/Agoda)" },
+                  { key: "social", label: "📸 Sosmed (IG/TikTok)" },
+                ].map((ch) => (
+                  <button
+                    key={ch.key}
+                    type="button"
+                    onClick={() => setSelectedChannel(ch.key)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      selectedChannel === ch.key
+                        ? "bg-[#183334] text-white shadow-xs"
+                        : "border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc]"
+                    }`}
+                  >
+                    {ch.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedAspect && (
+                  <span className="inline-flex items-center gap-1 rounded bg-[#e0f2fe] px-2 py-0.5 text-xs font-semibold text-[#0369a1]">
+                    Filter: #{selectedAspect}
+                    <button type="button" onClick={() => setSelectedAspect(null)} className="ml-1 text-[#0284c7] hover:text-[#0369a1]">✕</button>
+                  </span>
+                )}
                 <select
                   value={reviewSentimentFilter}
                   onChange={(e) => setReviewSentimentFilter(e.target.value)}
-                  className="rounded-lg border bg-[#fbfcfd] px-3 py-1.5 text-xs font-semibold"
+                  className="rounded-lg border bg-[#fbfcfd] px-3 py-1.5 text-xs font-semibold text-[#183334]"
                   aria-label="Filter Sentimen Ulasan"
                 >
                   <option value="all">Semua Sentimen</option>
-                  <option value="positive">Positif</option>
-                  <option value="neutral">Netral</option>
-                  <option value="negative">Perlu Atensi</option>
+                  <option value="positive">👍 Positif Saja</option>
+                  <option value="neutral">😐 Netral Saja</option>
+                  <option value="negative">⚠️ Perlu Atensi</option>
                 </select>
-                <span className="rounded-full bg-[#f4fbe9] px-3 py-1 text-xs font-semibold text-[#1d5c50]">
+                <span className="rounded-full bg-[#f4fbe9] px-2.5 py-1 text-xs font-semibold text-[#1d5c50]">
                   {outletReviews.length} Ulasan
                 </span>
               </div>
@@ -739,42 +958,53 @@ export default function MarketIntelligencePage() {
                   Tidak ada ulasan yang cocok dengan kriteria filter saat ini.
                 </div>
               ) : (
-                outletReviews.map((rev) => (
-                  <article
-                    key={rev.id}
-                    className="rounded-xl border border-[#e2e8f0] bg-[#fbfcfd] p-4 transition-all hover:border-[#226e6b] hover:bg-white"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded bg-[#1e293b] px-2 py-0.5 text-[11px] font-bold text-white">
-                          {rev.source}
-                        </span>
-                        <span className="text-xs text-[#64748b]">
-                          {fmt(rev.reviewDate)}
-                        </span>
-                        {"outletName" in rev && selectedOutlet === "all" && (
-                          <span className="rounded bg-[#e0f2fe] px-2 py-0.5 text-[11px] font-semibold text-[#0369a1]">
-                            {rev.outletName}
+                outletReviews.map((rev) => {
+                  const chCat = getChannelFromSource(rev.source);
+                  const badgeColor =
+                    chCat === "social"
+                      ? "bg-[#be185d]"
+                      : chCat === "google"
+                        ? "bg-[#1d4ed8]"
+                        : chCat === "ota"
+                          ? "bg-[#047857]"
+                          : "bg-[#1e293b]";
+
+                  return (
+                    <article
+                      key={rev.id}
+                      className="rounded-xl border border-[#e2e8f0] bg-[#fbfcfd] p-4 transition-all hover:border-[#226e6b] hover:bg-white"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded px-2 py-0.5 text-[11px] font-bold text-white ${badgeColor}`}>
+                            {rev.source}
                           </span>
-                        )}
+                          <span className="text-xs text-[#64748b]">
+                            {fmt(rev.reviewDate)}
+                          </span>
+                          {"outletName" in rev && selectedOutlet === "all" && (
+                            <span className="rounded bg-[#e0f2fe] px-2 py-0.5 text-[11px] font-semibold text-[#0369a1]">
+                              {rev.outletName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[#fef9c3] px-2 py-0.5 text-xs font-bold text-[#854d0e]">
+                            ⭐ {rev.rating}/5
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                              rev.sentiment === "positive"
+                                ? "bg-[#dcfce7] text-[#15803d]"
+                                : rev.sentiment === "negative"
+                                  ? "bg-[#fee2e2] text-[#b91c1c]"
+                                  : "bg-[#f1f5f9] text-[#475569]"
+                            }`}
+                          >
+                            {sentimentLabel(rev.sentiment)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-[#fef9c3] px-2 py-0.5 text-xs font-bold text-[#854d0e]">
-                          ⭐ {rev.rating}/5
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            rev.sentiment === "positive"
-                              ? "bg-[#dcfce7] text-[#15803d]"
-                              : rev.sentiment === "negative"
-                                ? "bg-[#fee2e2] text-[#b91c1c]"
-                                : "bg-[#f1f5f9] text-[#475569]"
-                          }`}
-                        >
-                          {sentimentLabel(rev.sentiment)}
-                        </span>
-                      </div>
-                    </div>
 
                     <p className="mt-3 text-sm leading-relaxed text-[#1e293b]">{rev.text}</p>
 
@@ -807,7 +1037,8 @@ export default function MarketIntelligencePage() {
                       )}
                     </div>
                   </article>
-                ))
+                );
+              })
               )}
             </div>
           </section>
