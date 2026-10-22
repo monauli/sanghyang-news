@@ -9,6 +9,7 @@ import {
   type PricingStrategy,
   type RoomType,
 } from "@/lib/market/dynamic-pricing";
+import type { GeneratedContentDraftBundle } from "@/lib/market/ai-content-generator";
 
 type Period = "30d" | "90d" | "year";
 
@@ -307,12 +308,55 @@ export default function MarketIntelligencePage() {
   const [promoPlatformFilter, setPromoPlatformFilter] = useState<string>("all");
   const [socialViewMode, setSocialViewMode] = useState<"gallery" | "matrix" | "analytics">("gallery");
   const [copiedStrategyId, setCopiedStrategyId] = useState<string | null>(null);
+  const [selectedContentDraft, setSelectedContentDraft] = useState<GeneratedContentDraftBundle | null>(null);
+  const [generatingContentId, setGeneratingContentId] = useState<string | null>(null);
+  const [contentModalFormat, setContentModalFormat] = useState<"reels" | "tiktok" | "carousel">("reels");
+  const [copiedDraftKey, setCopiedDraftKey] = useState<string | null>(null);
 
   const handleCopyStrategy = (id: string, text: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStrategyId(id);
       setTimeout(() => setCopiedStrategyId(null), 2500);
+    }
+  };
+
+  const handleCopyDraftText = (key: string, text: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedDraftKey(key);
+      setTimeout(() => setCopiedDraftKey(null), 2500);
+    }
+  };
+
+  const handleGenerateAiContent = async (item: {
+    id: string;
+    competitorName: string;
+    title: string;
+    category: string;
+    counterStrategy: string;
+  }) => {
+    setGeneratingContentId(item.id);
+    try {
+      const res = await fetch("/api/market-intelligence/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          competitorName: item.competitorName,
+          promoTitle: item.title,
+          promoCategory: item.category,
+          counterStrategy: item.counterStrategy,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setSelectedContentDraft(json.data);
+        setContentModalFormat("reels");
+      }
+    } catch (err) {
+      console.error("Gagal generate draf konten AI:", err);
+    } finally {
+      setGeneratingContentId(null);
     }
   };
 
@@ -1568,13 +1612,23 @@ export default function MarketIntelligencePage() {
                             <span>💡</span>
                             <span>Rekomendasi Taktis Sanghyang:</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyStrategy(item.id, item.counterStrategy)}
-                            className="shrink-0 rounded bg-white border border-[#86efac] px-2 py-0.5 text-[11px] font-semibold text-[#15803d] hover:bg-[#dcfce7] transition-all"
-                          >
-                            {copiedStrategyId === item.id ? "✓ Disalin!" : "📋 Salin Taktik"}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyStrategy(item.id, item.counterStrategy)}
+                              className="shrink-0 rounded bg-white border border-[#86efac] px-2 py-0.5 text-[11px] font-semibold text-[#15803d] hover:bg-[#dcfce7] transition-all"
+                            >
+                              {copiedStrategyId === item.id ? "✓ Disalin!" : "📋 Salin Taktik"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleGenerateAiContent(item)}
+                              disabled={generatingContentId === item.id}
+                              className="shrink-0 rounded bg-[#065f46] px-2 py-0.5 text-[11px] font-bold text-white hover:bg-[#047857] shadow-sm transition-all disabled:opacity-50"
+                            >
+                              {generatingContentId === item.id ? "✨ Merancang..." : "✨ Draf AI"}
+                            </button>
+                          </div>
                         </div>
                         <p className="mt-1.5 text-[#047857]">
                           {item.counterStrategy}
@@ -2393,6 +2447,218 @@ export default function MarketIntelligencePage() {
               </div>
             </section>
           </>
+        )}
+
+        {/* MODAL HASIL GENERATOR DRAF KONTEN AI */}
+        {selectedContentDraft && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-emerald-300 bg-white p-6 shadow-2xl">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                    <span>✨</span> Gemini AI Marketing Accelerator
+                  </div>
+                  <h3 className="mt-1.5 text-xl font-bold text-slate-900">
+                    Draf Konten Siap Unggah untuk Sanghyang
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Menanggapi promo {selectedContentDraft.competitorContext.competitorName}: &ldquo;{selectedContentDraft.competitorContext.promoTitle}&rdquo;
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentDraft(null)}
+                  className="rounded-lg bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Format Selector Tabs */}
+              <div className="mt-4 flex border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setContentModalFormat("reels")}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-bold transition-all ${
+                    contentModalFormat === "reels"
+                      ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
+                      : "border-transparent text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>🎬</span> Instagram Reels
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContentModalFormat("tiktok")}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-bold transition-all ${
+                    contentModalFormat === "tiktok"
+                      ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
+                      : "border-transparent text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>🎵</span> TikTok POV Kasual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContentModalFormat("carousel")}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-bold transition-all ${
+                    contentModalFormat === "carousel"
+                      ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
+                      : "border-transparent text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>📑</span> Instagram Carousel (5 Slide)
+                </button>
+              </div>
+
+              {/* Format 1: Reels */}
+              {contentModalFormat === "reels" && (
+                <div className="mt-4 space-y-4 text-xs">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5">
+                    <span className="font-bold text-amber-900 block mb-1">⚡ Hook 3 Detik Pertama (Visual & Suara):</span>
+                    <p className="text-amber-950 font-medium text-sm leading-snug">
+                      &ldquo;{selectedContentDraft.reels.hook3Sec}&rdquo;
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                    <span className="font-bold text-slate-700 block mb-1">🎥 Panduan Pengambilan Video:</span>
+                    <p className="text-slate-600 leading-relaxed">
+                      {selectedContentDraft.reels.visualDirection}
+                    </p>
+                    <div className="mt-2 text-[11px] font-mono text-purple-700">
+                      🎵 Rekomendasi Audio: {selectedContentDraft.reels.audioRecommendation}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-slate-800">📝 Naskah Caption Siap Pakai:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyDraftText("reels-caption", selectedContentDraft.reels.caption + "\n\n" + selectedContentDraft.reels.hashtags.join(" "))}
+                        className="rounded bg-emerald-700 px-2.5 py-1 text-white font-bold hover:bg-emerald-800 transition-all"
+                      >
+                        {copiedDraftKey === "reels-caption" ? "✓ Berhasil Disalin!" : "📋 Salin Caption & Hashtag"}
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap font-sans text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                      {selectedContentDraft.reels.caption}
+                    </pre>
+                    <div className="mt-2 flex flex-wrap gap-1 text-[11px] font-mono text-blue-600">
+                      {selectedContentDraft.reels.hashtags.map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Format 2: TikTok */}
+              {contentModalFormat === "tiktok" && (
+                <div className="mt-4 space-y-4 text-xs">
+                  <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-3.5">
+                    <span className="font-bold text-purple-900 block mb-1">📱 Teks POV Mengambang di Layar:</span>
+                    <p className="text-purple-950 font-bold text-sm leading-snug">
+                      &ldquo;{selectedContentDraft.tiktok.hookPOV}&rdquo;
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                    <span className="font-bold text-slate-700 block mb-2">⏱️ Alur Skenario Video (15-30 Detik):</span>
+                    <ul className="space-y-1.5 list-disc list-inside text-slate-700">
+                      {selectedContentDraft.tiktok.storyline.map((step, idx) => (
+                        <li key={idx} className="leading-relaxed">{step}</li>
+                      ))}
+                    </ul>
+                    <div className="mt-2 text-[11px] font-mono text-emerald-700">
+                      🎵 Sound Vibe: {selectedContentDraft.tiktok.soundTrend}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-slate-800">📝 Caption TikTok:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyDraftText("tiktok-caption", selectedContentDraft.tiktok.caption + "\n\n" + selectedContentDraft.tiktok.hashtags.join(" "))}
+                        className="rounded bg-emerald-700 px-2.5 py-1 text-white font-bold hover:bg-emerald-800 transition-all"
+                      >
+                        {copiedDraftKey === "tiktok-caption" ? "✓ Berhasil Disalin!" : "📋 Salin Caption TikTok"}
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap font-sans text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                      {selectedContentDraft.tiktok.caption}
+                    </pre>
+                    <div className="mt-2 flex flex-wrap gap-1 text-[11px] font-mono text-blue-600">
+                      {selectedContentDraft.tiktok.hashtags.map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Format 3: Carousel */}
+              {contentModalFormat === "carousel" && (
+                <div className="mt-4 space-y-4 text-xs">
+                  <div className="space-y-2">
+                    <span className="font-bold text-slate-800 block">🖼️ Panduan Visual 5 Slide Carousel:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      {selectedContentDraft.carousel.slides.map((slide) => (
+                        <div key={slide.slideNo} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 flex flex-col justify-between">
+                          <div>
+                            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">Slide {slide.slideNo}</span>
+                            <h5 className="font-bold text-slate-900 mt-1 text-[11px] leading-snug">{slide.title}</h5>
+                            <p className="text-[10px] text-slate-600 mt-1">{slide.description}</p>
+                          </div>
+                          <span className="text-[9px] text-emerald-700 italic mt-2 block border-t border-slate-200 pt-1">Visual: {slide.visualNote}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                    <span className="font-bold text-emerald-900">🎁 Penawaran Spesial di Slide Terakhir:</span>
+                    <p className="text-emerald-950 font-semibold mt-0.5">{selectedContentDraft.carousel.promoOffer}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-slate-800">📝 Caption Carousel:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyDraftText("carousel-caption", selectedContentDraft.carousel.caption + "\n\n" + selectedContentDraft.carousel.hashtags.join(" "))}
+                        className="rounded bg-emerald-700 px-2.5 py-1 text-white font-bold hover:bg-emerald-800 transition-all"
+                      >
+                        {copiedDraftKey === "carousel-caption" ? "✓ Berhasil Disalin!" : "📋 Salin Caption Carousel"}
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap font-sans text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                      {selectedContentDraft.carousel.caption}
+                    </pre>
+                    <div className="mt-2 flex flex-wrap gap-1 text-[11px] font-mono text-blue-600">
+                      {selectedContentDraft.carousel.hashtags.map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="mt-6 flex justify-end border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentDraft(null)}
+                  className="rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {error && (
