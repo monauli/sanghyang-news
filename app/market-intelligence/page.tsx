@@ -1,8 +1,14 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { comparisonProfiles } from "@/lib/market/competitor-comparison";
+import {
+  calculateDynamicPrice,
+  type DayType,
+  type PricingStrategy,
+  type RoomType,
+} from "@/lib/market/dynamic-pricing";
 
 type Period = "30d" | "90d" | "year";
 
@@ -227,6 +233,32 @@ export default function MarketIntelligencePage() {
   const [promoCompetitorFilter, setPromoCompetitorFilter] = useState<string>("all");
   const [promoCategoryFilter, setPromoCategoryFilter] = useState<string>("all");
   const [promoPlatformFilter, setPromoPlatformFilter] = useState<string>("all");
+
+  const [pricingOccupancy, setPricingOccupancy] = useState<number>(65);
+  const [pricingDayType, setPricingDayType] = useState<DayType>("saturday");
+  const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy>("balanced");
+  const [pricingRoomType, setPricingRoomType] = useState<RoomType>("standard");
+
+  const baselineSanghyangRate = data?.marketRateComparison?.find((x) => x.hotel === "Sanghyang")?.price ?? 285602;
+  const astonRate = data?.marketRateComparison?.find((x) => x.hotel.includes("Aston"))?.price ?? 663094;
+  const mambrukRate = data?.marketRateComparison?.find((x) => x.hotel.includes("Mambruk"))?.price ?? 776288;
+  const jayakartaRate = data?.marketRateComparison?.find((x) => x.hotel.includes("Jayakarta"))?.price ?? 229168;
+
+  const pricingSim = useMemo(() => {
+    return calculateDynamicPrice({
+      baselineRate: baselineSanghyangRate,
+      competitorRates: {
+        astonRate,
+        mambrukRate,
+        jayakartaRate,
+      },
+      occupancyPercent: pricingOccupancy,
+      dayType: pricingDayType,
+      strategy: pricingStrategy,
+      roomType: pricingRoomType,
+      totalRooms: 100,
+    });
+  }, [baselineSanghyangRate, astonRate, mambrukRate, jayakartaRate, pricingOccupancy, pricingDayType, pricingStrategy, pricingRoomType]);
 
   const downloadExecutivePdf = async () => {
     if (!data) return;
@@ -1557,6 +1589,249 @@ export default function MarketIntelligencePage() {
               ) : (
                 <div className="mt-3 rounded-lg bg-[#f4f7fa] p-4 text-sm text-[#42546b]">Belum ada harga pasar tersimpan.</div>
               )}
+            </section>
+
+            {/* KALKULATOR SIMULASI TARIF DINAMIS & OPTIMASI REVPAR */}
+            <section className="mb-6 rounded-2xl border border-[#d1fae5] bg-gradient-to-br from-white via-[#fafffa] to-[#f0fdf4] p-5 md:p-6 shadow-[0_10px_32px_rgba(16,185,129,0.07)]">
+              {/* Header */}
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e2e8f0] pb-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#86efac] bg-white px-3 py-1 text-xs font-bold text-[#15803d]">
+                    <span>⚡</span> Revenue & Yield Management
+                  </div>
+                  <h2 className="mt-2 text-xl md:text-2xl font-bold text-[#0f392b]">
+                    Kalkulator Simulasi Tarif Dinamis & Optimasi RevPAR
+                  </h2>
+                  <p className="mt-1 text-sm text-[#4b6358] max-w-3xl leading-relaxed">
+                    Simulasi rekomendasi penyesuaian tarif kamar Sanghyang berdasarkan okupansi resort, tipe hari menginap, dan rentang harga pasar Google Hotels Anyer terkini (Aston, Mambruk, Jayakarta).
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg border border-[#cbd5e1] bg-white px-3 py-1.5 text-xs font-semibold text-[#334155]">
+                    Patokan Baseline: IDR {baselineSanghyangRate.toLocaleString("id-ID")}
+                  </span>
+                  <span className="rounded-lg border border-[#86efac] bg-[#f0fdf4] px-3 py-1.5 text-xs font-bold text-[#166534]">
+                    Rata-rata Pasar Anyer: IDR {pricingSim.marketAverageRate.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Main Grid: Controls on Left, Live Financial Output on Right */}
+              <div className="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column (7 cols): Interactive Controls */}
+                <div className="lg:col-span-7 space-y-5">
+                  {/* 1. Occupancy Slider */}
+                  <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#475569]">
+                        🎯 Tingkat Okupansi Resort:
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white"
+                          style={{ backgroundColor: pricingSim.demandTierColor }}
+                        >
+                          {pricingSim.demandTier}
+                        </span>
+                        <span className="text-lg font-extrabold text-[#0f172a]">
+                          {pricingOccupancy}%
+                        </span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="5"
+                      value={pricingOccupancy}
+                      onChange={(e) => setPricingOccupancy(Number(e.target.value))}
+                      className="mt-3 w-full h-2.5 bg-[#e2e8f0] rounded-lg appearance-none cursor-pointer accent-[#059669]"
+                    />
+                    <div className="mt-2 flex justify-between text-[11px] font-semibold text-[#64748b]">
+                      <span>10% (Low)</span>
+                      <span>40% (Threshold)</span>
+                      <span>70% (Balanced)</span>
+                      <span>88% (Peak)</span>
+                      <span>100% (Sold Out)</span>
+                    </div>
+                  </div>
+
+                  {/* 2. Day Type Toggle */}
+                  <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#475569] block mb-2.5">
+                      📅 Hari Menginap / Kalender:
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { key: "weekday", label: "💼 Weekday", desc: "Senin - Kamis (-8%)" },
+                        { key: "friday", label: "🌅 Jumat", desc: "Pintu Masuk (+12%)" },
+                        { key: "saturday", label: "🔥 Sabtu (Peak)", desc: "Malam Puncak (+32%)" },
+                        { key: "holiday", label: "🏖️ Libur Panjang", desc: "Long Weekend (+48%)" },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setPricingDayType(item.key as DayType)}
+                          className={`rounded-lg p-2.5 text-left transition-all ${
+                            pricingDayType === item.key
+                              ? "border-2 border-[#059669] bg-[#ecfdf5] shadow-sm"
+                              : "border border-[#e2e8f0] bg-white hover:bg-[#f8fafc]"
+                          }`}
+                        >
+                          <div className="text-xs font-bold text-[#0f172a]">{item.label}</div>
+                          <div className="text-[10px] text-[#64748b] mt-0.5">{item.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Strategy Mode & Room Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Strategy */}
+                    <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#475569] block mb-2">
+                        ⚙️ Strategi Pricing:
+                      </label>
+                      <div className="space-y-1.5">
+                        {[
+                          { key: "volume", label: "🛡️ Volume Focus (Kamar Terisi)" },
+                          { key: "balanced", label: "⚖️ Keseimbangan RevPAR (Rekomendasi)" },
+                          { key: "yield", label: "💎 Yield Maximizer (Margin Tinggi)" },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setPricingStrategy(item.key as PricingStrategy)}
+                            className={`w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition-all ${
+                              pricingStrategy === item.key
+                                ? "bg-[#166534] text-white shadow-sm"
+                                : "border border-[#e2e8f0] bg-[#f8fafc] text-[#334155] hover:bg-[#e2e8f0]"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Room Type */}
+                    <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#475569] block mb-2">
+                        🛏️ Tipe Unit / Kamar:
+                      </label>
+                      <div className="space-y-1.5">
+                        {[
+                          { key: "standard", label: "Standard Garden View (1.0x)" },
+                          { key: "deluxe", label: "Deluxe Pool View (1.25x)" },
+                          { key: "beachfront", label: "Executive Beachfront Villa (1.65x)" },
+                          { key: "suite", label: "Sanghyang Family Suite (2.1x)" },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setPricingRoomType(item.key as RoomType)}
+                            className={`w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition-all ${
+                              pricingRoomType === item.key
+                                ? "bg-[#0f766e] text-white shadow-sm"
+                                : "border border-[#e2e8f0] bg-[#f8fafc] text-[#334155] hover:bg-[#e2e8f0]"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column (5 cols): Real-Time Financial & Tactical Results */}
+                <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-[#86efac] bg-gradient-to-b from-[#f0fdf4] to-white p-5 shadow-sm">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#15803d]">
+                      💡 Hasil Rekomendasi Tarif Dinamis
+                    </span>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-3xl font-extrabold text-[#065f46]">
+                        IDR {pricingSim.recommendedRate.toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-xs text-[#64748b]">/ malam</span>
+                    </div>
+
+                    {/* Difference badge */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          pricingSim.difference >= 0
+                            ? "bg-[#dcfce7] text-[#15803d]"
+                            : "bg-[#fee2e2] text-[#b91c1c]"
+                        }`}
+                      >
+                        {pricingSim.difference >= 0 ? "▲" : "▼"} {pricingSim.percentChange > 0 ? `+${pricingSim.percentChange}%` : `${pricingSim.percentChange}%`}
+                        ({pricingSim.difference >= 0 ? `+IDR ${pricingSim.difference.toLocaleString("id-ID")}` : `-IDR ${Math.abs(pricingSim.difference).toLocaleString("id-ID")}`})
+                      </span>
+                      <span className="text-[11px] text-[#64748b]">vs baseline Google Hotels</span>
+                    </div>
+
+                    {/* Key Metrics Grid */}
+                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                      <div className="rounded-xl border border-[#e2e8f0] bg-white p-3">
+                        <span className="text-[11px] font-medium text-[#64748b] block">RevPAR Simulasi:</span>
+                        <span className="text-sm font-bold text-[#0f172a] block mt-0.5">
+                          IDR {pricingSim.revparRecommended.toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-[10px] text-[#166534] font-semibold">
+                          {pricingSim.revparLiftPercent >= 0 ? `+${pricingSim.revparLiftPercent}%` : `${pricingSim.revparLiftPercent}%`} vs flat baseline
+                        </span>
+                      </div>
+
+                      <div className="rounded-xl border border-[#e2e8f0] bg-white p-3">
+                        <span className="text-[11px] font-medium text-[#64748b] block">Price Positioning Index:</span>
+                        <span className="text-sm font-bold text-[#0284c7] block mt-0.5">
+                          {pricingSim.pricePositioningIndex}%
+                        </span>
+                        <span className="text-[10px] text-[#64748b]">
+                          dari rerata kompetitor
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Monthly Projection */}
+                    <div className="mt-3 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-3 text-xs">
+                      <div className="flex items-center justify-between text-[#166534] font-bold">
+                        <span>Estimasi Omset Bulanan:</span>
+                        <span>IDR {pricingSim.estimatedMonthlyRevenue.toLocaleString("id-ID")}</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-[#15803d]">
+                        Potensi kenaikan omset kamar: <strong className="font-extrabold">{pricingSim.estimatedMonthlyRevenueLift >= 0 ? `+IDR ${pricingSim.estimatedMonthlyRevenueLift.toLocaleString("id-ID")}` : `-IDR ${Math.abs(pricingSim.estimatedMonthlyRevenueLift).toLocaleString("id-ID")}`}</strong> per bulan (asumsi 100 unit kamar).
+                      </p>
+                    </div>
+
+                    {/* Tactical Bundling Suggestion */}
+                    <div className="mt-4 rounded-xl border border-[#fed7aa] bg-[#fffbeb] p-3.5 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-[#92400e]">
+                        <span>🎁</span>
+                        <span>{pricingSim.bundlingRecommendation.title}</span>
+                      </div>
+                      <ul className="mt-2 space-y-1 text-[#78350f]">
+                        {pricingSim.bundlingRecommendation.items.map((bItem, idx) => (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <span className="text-[#d97706] font-bold">•</span>
+                            <span>{bItem}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 text-[10px] text-[#b45309] font-medium border-t border-[#fde68a] pt-1.5">
+                        Target tamu: {pricingSim.bundlingRecommendation.targetAudience}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Market analysis footer */}
+                  <p className="mt-4 border-t border-[#d1fae5] pt-3 text-[11px] text-[#4b6358] leading-relaxed italic">
+                    {pricingSim.positioningAnalysis}
+                  </p>
+                </div>
+              </div>
             </section>
 
             {/* Reputasi Sanghyang vs Kompetitor */}

@@ -20,5 +20,5 @@
 - 6 Outlet Sanghyang: Kamar/Resort, Sunset Grill, Dragon Beach Club, D'Bistro, D'Bar & Karaoke, D'Spa & Onsen Belerang.
 - 16 Entitas terdaftar, 273 ulasan pelanggan riil (Google Maps, Traveloka, Agoda, TripAdvisor), 16 MarketInsight (10 temuan maintain/improve + 5 komparasi head-to-head + 1 ringkasan eksekutif riset).
 - Satu Pintu Sinkronisasi: `npm run sync:crawlai` mengekspor dari `crawler/research/data/research.sqlite` langsung ke Supabase.
-- Multi-Kanal & Otomasi Malam: Scorecard 3-kanal (Google Maps, OTAs, Sosmed), Radar Promo/Event Kompetitor (@astonanyer, @novusjivaanyer, @mambrukhotelanyer), dan nightly crawl (00:15 WIB GitHub Actions).
+- Multi-Kanal, Radar Sosmed & Dynamic Pricing: Scorecard 3-kanal, Radar Promo/Event Kompetitor (@astonanyer, @novusjivaanyer, @mambrukhotelanyer), Dynamic Pricing Simulator (RevPAR & PPI), dan nightly crawl (00:15 WIB GitHub Actions).
 - Pengujian Kualitas: `npm run test:all` memverifikasi 100% kepatuhan The 4 Zeros dan API Multi-Outlet.

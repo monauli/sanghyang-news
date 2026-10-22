@@ -378,3 +378,4 @@ export async function syncCompetitorSocialPromoEvents(): Promise<{
 
   return { totalSynced, activeCount, upcomingCount, expiredCount };
 }
+

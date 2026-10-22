@@ -71,3 +71,4 @@ testCompetitorSocialRadarApi()
     process.exit(1);
   })
   .finally(() => db.$disconnect());
+
