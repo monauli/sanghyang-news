@@ -14,13 +14,14 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams; const period = (params.get('period') ?? '30d') as SummaryPeriod; const segment = params.get('segment') ?? 'all'; const source = params.get('source');
   if (!validateSummaryParams(period, segment, source)) return NextResponse.json({ error: 'invalid summary filters' }, { status: 400 });
   const cleanHtmlText = (str: string) => str.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
-  const [items, competitors, prices, sanghyangPrices, promotions, reviews] = await Promise.all([
+  const [items, competitors, prices, sanghyangPrices, promotions, reviews, insights] = await Promise.all([
     db.marketItem.findMany({ include: { article: { select: { title: true, publishedAt: true, canonicalUrl: true } } }, orderBy: { createdAt: 'desc' } }),
     db.competitor.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
     db.competitorPriceSnapshot.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { observedAt: 'desc' } }),
     db.sanghyangPriceSnapshot.findMany({ orderBy: { observedAt: 'desc' } }),
     db.competitorPromotion.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { capturedAt: 'desc' } }),
     db.competitorReview.findMany({ include: { competitor: { select: { name: true, instagramUrl: true, tiktokUrl: true, websiteUrl: true, googleMapsUrl: true } } }, orderBy: { reviewDate: 'desc' } }),
+    db.marketInsight.findMany({ where: { status: 'active' }, orderBy: { priority: 'desc' } }),
   ]);
   const competitorMentions = (text: string) => competitors.filter((c) => text.toLowerCase().includes(c.name.toLowerCase())).map((c) => c.name);
   const relevantItems = items.filter((x) => isMarketRelevant({ title: x.article.title, text: cleanHtmlText(x.description ?? '') }));
@@ -159,10 +160,14 @@ export async function GET(request: Request) {
     })),
   ].filter((row) => !source || row.source === source).filter((row) => segment === 'all' || ({ fnb: 'F&B', event: 'Events', entertainment: 'Entertainment', destination: 'Destinations', competitor: 'Competitors', promotion: 'Promotions', review: 'Reviews' } as Record<string, string>)[segment] === row.category);
   const summary = transformMarketSummary({ rows, competitors: competitors.length, marketItems: relevantItems.length, period });
-  const sanghyangComp = competitors.find((c) => c.name.toLowerCase().includes('sanghyang'));
-  const sanghyangRating = sanghyangComp?.rating != null ? Number(sanghyangComp.rating) : 4.4;
+
+  const isSanghyangOutlet = (name: string) => name.toLowerCase().includes('sanghyang');
+  const sanghyangMain = competitors.find((c) => c.name === 'Sanghyang Indah Spa Resort') ?? competitors.find((c) => isSanghyangOutlet(c.name));
+  const sanghyangRating = sanghyangMain?.rating != null ? Number(sanghyangMain.rating) : 4.4;
+  const sanghyangReviewCount = sanghyangMain?.reviewCount ?? 2937;
+
   const comparison = competitors
-    .filter((x) => x.rating != null && x.reviewCount != null)
+    .filter((x) => x.rating != null && x.reviewCount != null && !isSanghyangOutlet(x.name))
     .map((x) => ({
       name: x.name,
       rating: Number(x.rating),
@@ -191,7 +196,133 @@ export async function GET(request: Request) {
   ];
   const marketBaseline = marketRates.find((x) => x.hotel === 'Sanghyang')?.price;
   const marketRateComparison = marketRates.map((x) => ({ ...x, difference: marketBaseline == null ? null : Number((x.price - marketBaseline).toFixed(2)) }));
-  return NextResponse.json({ ...summary, comparison, priceComparison: priceRows, marketRateComparison, sanghyang: { rating: sanghyangRating, reviewCount: 2937 } });
+
+  // Outlet-Level Intelligence breakdown
+  const sanghyangOutlets = competitors.filter((c) => isSanghyangOutlet(c.name));
+  const outletKeyMap: Record<string, string> = {
+    'Sanghyang Indah Spa Resort': 'resort',
+    'Sunset Grill (Sanghyang)': 'sunset-grill',
+    'Dragon Beach Club (Sanghyang)': 'dragon-beach-club',
+    "D'Bistro (Sanghyang)": 'dbistro',
+    "D'Bar & Karaoke (Sanghyang)": 'dbar',
+    "D'Spa & Onsen Belerang (Sanghyang)": 'dspa',
+  };
+
+  const outlets = sanghyangOutlets.map((outlet) => {
+    const key = outletKeyMap[outlet.name] ?? outlet.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const outletReviews = reviews
+      .filter((r) => r.competitorId === outlet.id || r.themes.includes(key))
+      .map((r) => ({
+        id: r.id,
+        externalId: r.externalId,
+        source: r.source,
+        sourceUrl: r.sourceUrl,
+        rating: Number(r.rating),
+        reviewDate: r.reviewDate.toISOString(),
+        title: r.title,
+        text: r.text,
+        sentiment: r.sentiment,
+        themes: r.themes,
+      }));
+
+    const posCount = outletReviews.filter((r) => r.sentiment === 'positive').length;
+    const neuCount = outletReviews.filter((r) => r.sentiment === 'neutral').length;
+    const negCount = outletReviews.filter((r) => r.sentiment === 'negative').length;
+
+    const findings = insights
+      .filter((i) => {
+        const ev = i.evidence as Record<string, unknown> | null;
+        return ev?.outlet === key || i.title.toLowerCase().includes(outlet.name.toLowerCase()) || (key === 'resort' && i.title.includes('Sanghyang Indah Spa Resort') && !i.title.includes('('));
+      })
+      .map((i) => {
+        const ev = (i.evidence as Record<string, unknown>) || {};
+        return {
+          id: i.id,
+          type: i.type,
+          title: i.title,
+          summary: i.summary,
+          action: (ev.action as string) || (i.type === 'recommendation' ? 'maintain' : 'improve'),
+          priority: (ev.priority as string) || (i.priority >= 90 ? 'high' : 'medium'),
+          steps: (ev.steps as string[]) || [],
+          evidenceIds: (ev.evidenceIds as string[]) || [],
+        };
+      });
+
+    return {
+      id: outlet.id,
+      key,
+      name: outlet.name,
+      location: outlet.location,
+      rating: outlet.rating != null ? Number(outlet.rating) : 4.4,
+      reviewCount: outlet.reviewCount ?? outletReviews.length,
+      websiteUrl: outlet.websiteUrl,
+      notes: outlet.notes,
+      sentimentDistribution: {
+        positive: posCount,
+        neutral: neuCount,
+        negative: negCount,
+        total: outletReviews.length,
+      },
+      findings,
+      reviews: outletReviews.slice(0, 30),
+    };
+  });
+
+  const comparisons = insights
+    .filter((i) => {
+      const ev = i.evidence as Record<string, unknown> | null;
+      return ev?.type === 'comparison';
+    })
+    .map((i) => {
+      const ev = (i.evidence as Record<string, unknown>) || {};
+      return {
+        id: i.id,
+        title: i.title,
+        summary: i.summary,
+        competitorId: ev.competitorId as string,
+        competitorName: ev.competitorName as string,
+        aspect: ev.aspect as string,
+        limitations: ev.limitations as string,
+        entityStrengths: (ev.entityStrengths as string[]) || [],
+        entityWeaknesses: (ev.entityWeaknesses as string[]) || [],
+        competitorStrengths: (ev.competitorStrengths as string[]) || [],
+        competitorWeaknesses: (ev.competitorWeaknesses as string[]) || [],
+      };
+    });
+
+  const actionFindings = insights
+    .filter((i) => {
+      const ev = i.evidence as Record<string, unknown> | null;
+      return ev?.action === 'maintain' || ev?.action === 'improve';
+    })
+    .map((i) => {
+      const ev = (i.evidence as Record<string, unknown>) || {};
+      return {
+        id: i.id,
+        outlet: (ev.outlet as string) || 'resort',
+        outletName: (ev.outletName as string) || 'Sanghyang Indah Spa Resort',
+        action: (ev.action as string) || (i.type === 'recommendation' ? 'maintain' : 'improve'),
+        priority: (ev.priority as string) || (i.priority >= 90 ? 'high' : 'medium'),
+        title: i.title,
+        summary: i.summary,
+        steps: (ev.steps as string[]) || [],
+        evidenceIds: (ev.evidenceIds as string[]) || [],
+      };
+    });
+
+  const executiveSummary = insights.find((i) => i.title.includes('Siklus Riset Pasar'))?.summary || null;
+
+  return NextResponse.json({
+    ...summary,
+    comparison,
+    priceComparison: priceRows,
+    marketRateComparison,
+    sanghyang: { rating: sanghyangRating, reviewCount: sanghyangReviewCount },
+    outlets,
+    comparisons,
+    actionFindings,
+    executiveSummary,
+  });
 }
 
 export function validateSummaryParams(period: string, segment: string, source: string | null) {

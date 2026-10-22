@@ -74,3 +74,7 @@ crawler/**/.pytest_cache/
 *.sqlite3
 *.db
 *.log
+
+# Local database backups
+backups/
+data/
