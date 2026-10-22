@@ -208,6 +208,75 @@ const sourceLabel = (source: string) => ({
 
 const sentimentLabel = (sentiment: string) => ({ positive: "Positif", neutral: "Netral", negative: "Negatif" }[sentiment.toLowerCase()] ?? sentiment);
 
+const sanghyangSocialOutletsMatrix = [
+  {
+    outlet: "Kamar & Resort Cottages",
+    icon: "🏝️",
+    competitorHandles: "@astonanyer, @mambrukhotelanyer",
+    competitorFocus: "Diskon kamar 10-20% kode STAYMORE26, Aquavillas atas laut, paket MICE",
+    competitorPriceRange: "IDR 663k – 1.100k",
+    sanghyangUSP: "Cottage luas bertaman tropis tepi pantai pasir putih, suasana asri dan ramah keluarga",
+    sanghyangPriceRange: "IDR 285k – 350k (Hemat 50-65%)",
+    recommendedContent: "Video Room Tour & POV jalan kaki 10 detik dari teras kamar ke bibir pantai pasir putih.",
+    targetPlatform: "TikTok POV & Instagram Reels",
+  },
+  {
+    outlet: "Sunset Grill Beachfront",
+    icon: "🐟",
+    competitorHandles: "@astonanyer (Sunset Cafe), @thejayakartaanyer",
+    competitorFocus: "Japanese 60s to Tokyo, menu soto Palangka, dining ber-AC di dermaga",
+    competitorPriceRange: "IDR 150k – 350k / pax",
+    sanghyangUSP: "Live Seafood Bakar tangkapan nelayan Selat Sunda dengan meja tepat di atas pasir pantai saat golden hour",
+    sanghyangPriceRange: "Paket Sharing Rp 199k (2-3 orang)",
+    recommendedContent: "Visual ASMR bakar ikan kuwe/kakap bumbu rempah dengan latar belakang matahari tenggelam ke laut.",
+    targetPlatform: "Instagram Reels & TikTok Foodies",
+  },
+  {
+    outlet: "Dragon Beach Club",
+    icon: "🎧",
+    competitorHandles: "@novusjivaanyer (The Upper Circle), @andalanbeach",
+    competitorFocus: "Skyline Serenade Dinner Rp 580k++, rooftop DJ party, beanbag kafe",
+    competitorPriceRange: "IDR 200k – 580k++ / pax",
+    sanghyangUSP: "Beach club terbuka tanpa tiket masuk mahal, live acoustic weekend, bonfire tepi pantai",
+    sanghyangPriceRange: "Free Entry / Min. order Rp 35k",
+    recommendedContent: "Highlight video senja akhir pekan: live band akustik, nyala api unggun pantai, dan mocktail tropis.",
+    targetPlatform: "Instagram Reels, TikTok Senja Anyer",
+  },
+  {
+    outlet: "D'Spa & Onsen Belerang Alami",
+    icon: "♨️",
+    competitorHandles: "@mambrukhotelanyer (Seaside Yoga), Accor Bliss Spa",
+    competitorFocus: "Yoga tepi laut, kolam air laut buatan (sea pool), spa relaksasi biasa",
+    competitorPriceRange: "IDR 250k – 600k",
+    sanghyangUSP: "Satu-satunya kolam air panas belerang alami vulkanik 24 jam di Banten (Monopoli Keunggulan Produk!)",
+    sanghyangPriceRange: "Gratis untuk tamu menginap / IDR 50k non-tamu",
+    recommendedContent: "Edukasi kesehatan: khasiat uap belerang alami untuk peremajaan kulit, pegal-pegal, dan detoks tubuh malam hari.",
+    targetPlatform: "TikTok Edukasi & Reels Testimoni Tamu",
+  },
+  {
+    outlet: "D'Bistro Nusantara",
+    icon: "🍽️",
+    competitorHandles: "@thejayakartaanyer, @omahlautcaferesto",
+    competitorFocus: "Menu kafe modern, paket hemat nasi soto & minuman bersoda",
+    competitorPriceRange: "IDR 35k – 85k",
+    sanghyangUSP: "Kuliner nusantara otentik, porsi kenyang keluarga, dan hidangan kelapa muda murni",
+    sanghyangPriceRange: "IDR 30k – 65k",
+    recommendedContent: "Foto Carousel & Story makan siang keluarga dengan sajian Nasi Goreng Spesial dan Ikan Bakar.",
+    targetPlatform: "Instagram Feed & Story",
+  },
+  {
+    outlet: "D'Bar & Karaoke Room",
+    icon: "🎤",
+    competitorHandles: "Kompetitor Bintang 4 lain (tidak memiliki fasilitas karaoke privat)",
+    competitorFocus: "Lounge bar hotel standar dengan harga minuman premium",
+    competitorPriceRange: "IDR 100k++ / drink",
+    sanghyangUSP: "Ruang karaoke keluarga privat ber-AC, sound system modern, dan suasana santai malam hari",
+    sanghyangPriceRange: "Paket Ruangan Hemat + Snack",
+    recommendedContent: "Konten 'After-Beach Party': serunya bernyanyi bersama rombongan kantor atau keluarga setelah main air di pantai.",
+    targetPlatform: "Instagram Story & Broadcast WhatsApp",
+  },
+];
+
 export default function MarketIntelligencePage() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Ringkasan");
   const [selectedOutlet, setSelectedOutlet] = useState<string>("all");
@@ -236,6 +305,49 @@ export default function MarketIntelligencePage() {
   const [promoCompetitorFilter, setPromoCompetitorFilter] = useState<string>("all");
   const [promoCategoryFilter, setPromoCategoryFilter] = useState<string>("all");
   const [promoPlatformFilter, setPromoPlatformFilter] = useState<string>("all");
+  const [socialViewMode, setSocialViewMode] = useState<"gallery" | "matrix" | "analytics">("gallery");
+  const [copiedStrategyId, setCopiedStrategyId] = useState<string | null>(null);
+
+  const handleCopyStrategy = (id: string, text: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedStrategyId(id);
+      setTimeout(() => setCopiedStrategyId(null), 2500);
+    }
+  };
+
+  const socialMetrics = useMemo(() => {
+    const list = data?.competitorSocialRadar || [];
+    const total = list.length || 1;
+    const active = list.filter((r) => r.status === "active").length;
+    const upcoming = list.filter((r) => r.status === "upcoming").length;
+    const igCount = list.filter((r) => r.platform === "instagram").length;
+    const tiktokCount = list.filter((r) => r.platform === "tiktok").length;
+
+    const categories: Record<string, number> = {};
+    for (const item of list) {
+      categories[item.category] = (categories[item.category] || 0) + 1;
+    }
+
+    const categoryList = Object.entries(categories)
+      .map(([cat, count]) => ({
+        category: cat,
+        count,
+        pct: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      total: list.length,
+      active,
+      upcoming,
+      igCount,
+      tiktokCount,
+      igPct: Math.round((igCount / total) * 100),
+      tiktokPct: Math.round((tiktokCount / total) * 100),
+      categoryList,
+    };
+  }, [data?.competitorSocialRadar]);
 
   const [pricingOccupancy, setPricingOccupancy] = useState<number>(65);
   const [pricingDayType, setPricingDayType] = useState<DayType>("saturday");
@@ -1193,40 +1305,77 @@ export default function MarketIntelligencePage() {
           </section>
         )}
 
-        {/* TAB SPECIFIC CONTENT (KULINER, ACARA, HIBURAN, DESTINASI, PROMO) */}
+        {/* TAB SPECIFIC CONTENT (KULINER, ACARA, HIBURAN, DESTINASI, PROMO, KOMPETITOR) */}
         {/* RADAR PROMO & EVENT MEDIA SOSIAL KOMPETITOR (INSTAGRAM & TIKTOK LIVE RADAR) */}
-        {(tab === "Promo" || tab === "Acara") && (
+        {(tab === "Promo" || tab === "Acara" || tab === "Kompetitor") && (
           <section className="mb-6 rounded-2xl border border-[#bbf7d0] bg-gradient-to-br from-[#f0fdf4] via-white to-[#f0fdfa] p-5 md:p-6 shadow-[0_8px_30px_rgba(16,185,129,0.08)]">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e2e8f0] pb-4">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#86efac] bg-white px-3 py-1 text-xs font-bold text-[#166534] shadow-sm">
                   <span className="flex h-2 w-2 rounded-full bg-[#22c55e] animate-pulse" />
-                  📡 Live Competitor Radar (Instagram & TikTok)
+                  📡 Radar Intelijen Media Sosial (Anyer & Carita)
                 </div>
                 <h2 className="mt-2 text-xl md:text-2xl font-bold text-[#0f392b]">
-                  Radar Promo & Event Kompetitor Terkini
+                  Radar Media Sosial & Analisis Tren Konten Kompetitor
                 </h2>
                 <p className="mt-1 text-sm text-[#4b6358] max-w-2xl leading-relaxed">
-                  Monitoring postingan promosi, diskon kamar & F&B, konser/live music, serta kampanye viral media sosial kompetitor (@astonanyer, @mambrukhotelanyer, @novusjivaanyer, @thejayakartaanyer, dll) yang dilengkapi rekomendasi taktis counter-strategy untuk outlet Sanghyang.
+                  Monitoring postingan promosi, reels estetik, diskon menginap & F&B, dan tren video viral media sosial kompetitor (@astonanyer, @novusjivaanyer, @mambrukhotelanyer, dll) dengan komparasi langsung terhadap 6 outlet Sanghyang Indah Spa Resort.
                 </p>
               </div>
 
               {/* STATS OVERVIEW PILLS */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-lg border border-[#86efac] bg-white px-3 py-1.5 text-xs font-semibold text-[#15803d] shadow-sm">
-                  🟢 {(data?.competitorSocialRadar || []).filter((r) => r.status === "active").length} Promo Aktif
+                  🟢 {socialMetrics.active} Promo Aktif
                 </span>
                 <span className="rounded-lg border border-[#fde68a] bg-white px-3 py-1.5 text-xs font-semibold text-[#b45309] shadow-sm">
-                  🟡 {(data?.competitorSocialRadar || []).filter((r) => r.status === "upcoming").length} Segera Datang
+                  🟡 {socialMetrics.upcoming} Segera Datang
                 </span>
                 <span className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8] shadow-sm">
-                  📸 {(data?.competitorSocialRadar || []).filter((r) => r.platform === "instagram").length} Instagram
+                  📸 {socialMetrics.igCount} Instagram ({socialMetrics.igPct}%)
                 </span>
                 <span className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f172a] shadow-sm">
-                  🎵 {(data?.competitorSocialRadar || []).filter((r) => r.platform === "tiktok").length} TikTok
+                  🎵 {socialMetrics.tiktokCount} TikTok ({socialMetrics.tiktokPct}%)
                 </span>
               </div>
             </div>
+
+            {/* VIEW MODE TOGGLE (GALLERY / MATRIX / ANALYTICS) */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex rounded-xl border border-[#cbd5e1] bg-white p-1 shadow-sm">
+                {[
+                  { key: "gallery", label: "🖼️ Galeri Feed & Reels", desc: "Postingan & Promo Riil" },
+                  { key: "matrix", label: "📊 Matriks 6 Outlet vs Kompetitor", desc: "Komparasi Strategi" },
+                  { key: "analytics", label: "📈 Tren Konten & Celah Pasar", desc: "Peluang Bisnis" },
+                ].map((mode) => {
+                  const active = socialViewMode === mode.key;
+                  return (
+                    <button
+                      key={mode.key}
+                      type="button"
+                      onClick={() => setSocialViewMode(mode.key as typeof socialViewMode)}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
+                        active
+                          ? "bg-[#065f46] text-white shadow"
+                          : "text-[#475569] hover:bg-slate-100 hover:text-[#0f172a]"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <span className="text-xs text-[#64748b] hidden sm:inline-block">
+                {socialViewMode === "gallery" && "Menampilkan postingan promosi & reels terverifikasi"}
+                {socialViewMode === "matrix" && "Pemetaan posisi kompetitif 6 outlet Sanghyang"}
+                {socialViewMode === "analytics" && "Analisis distribusi pilar konten & celah pasar"}
+              </span>
+            </div>
+
+            {/* VIEW 1: GALLERY FEED & REELS */}
+            {socialViewMode === "gallery" && (
+              <>
 
             {/* FILTER BAR */}
             <div className="mt-6 space-y-3 rounded-xl border border-[#d1fae5] bg-white/80 p-4 backdrop-blur-sm">
@@ -1414,11 +1563,20 @@ export default function MarketIntelligencePage() {
 
                       {/* SANGHYANG COUNTER STRATEGY */}
                       <div className="mt-3 rounded-lg border border-[#a7f3d0] bg-[#f0fdf9] p-3 text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 font-bold text-[#065f46]">
-                          <span>💡</span>
-                          <span>Rekomendasi Taktis Sanghyang:</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 font-bold text-[#065f46]">
+                            <span>💡</span>
+                            <span>Rekomendasi Taktis Sanghyang:</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyStrategy(item.id, item.counterStrategy)}
+                            className="shrink-0 rounded bg-white border border-[#86efac] px-2 py-0.5 text-[11px] font-semibold text-[#15803d] hover:bg-[#dcfce7] transition-all"
+                          >
+                            {copiedStrategyId === item.id ? "✓ Disalin!" : "📋 Salin Taktik"}
+                          </button>
                         </div>
-                        <p className="mt-1 text-[#047857]">
+                        <p className="mt-1.5 text-[#047857]">
                           {item.counterStrategy}
                         </p>
                       </div>
@@ -1442,6 +1600,223 @@ export default function MarketIntelligencePage() {
                   </article>
                 ))}
             </div>
+            </>
+          )}
+
+          {/* VIEW 2: MATRIX 6 OUTLET SANGHYANG VS KOMPETITOR */}
+          {socialViewMode === "matrix" && (
+            <div className="mt-5 space-y-4">
+              <div className="rounded-xl border border-[#d1fae5] bg-white p-4 shadow-sm">
+                <h3 className="text-base font-bold text-[#065f46] flex items-center gap-2">
+                  <span>🏢</span> Matriks Strategi Konten: 6 Outlet Sanghyang vs Kompetitor Kawasan Anyer
+                </h3>
+                <p className="mt-1 text-xs text-[#4b6358] leading-relaxed">
+                  Setiap outlet Sanghyang memiliki penempatan pasar unik yang mampu mengimbangi keunggulan kompetitor. Gunakan panduan pilar konten dan format video di bawah untuk kampanye media sosial:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {sanghyangSocialOutletsMatrix.map((outletItem) => (
+                  <div
+                    key={outletItem.outlet}
+                    className="rounded-xl border border-[#cbd5e1] bg-white p-5 shadow-sm hover:border-[#10b981] transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-2xl p-1.5 rounded-lg bg-[#f0fdf4] border border-[#86efac]">
+                            {outletItem.icon}
+                          </span>
+                          <div>
+                            <h4 className="font-bold text-sm text-[#0f172a]">{outletItem.outlet}</h4>
+                            <span className="text-[11px] font-mono text-[#059669]">
+                              Format: {outletItem.targetPlatform}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-[#ecfdf5] border border-[#a7f3d0] px-2.5 py-0.5 text-[11px] font-bold text-[#047857]">
+                          {outletItem.sanghyangPriceRange}
+                        </span>
+                      </div>
+
+                      <div className="mt-3.5 space-y-2.5 text-xs">
+                        <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-200/60">
+                          <span className="font-bold text-[#475569] block mb-0.5">
+                            🥊 Kompetitor Terkait: <span className="font-mono text-[#0284c7]">{outletItem.competitorHandles}</span>
+                          </span>
+                          <p className="text-[#334155]">{outletItem.competitorFocus}</p>
+                          <span className="text-[11px] text-[#64748b] block mt-1">
+                            Rentang Tarif Pasar: {outletItem.competitorPriceRange}
+                          </span>
+                        </div>
+
+                        <div className="rounded-lg bg-[#f0fdf4] p-2.5 border border-[#86efac]">
+                          <span className="font-bold text-[#15803d] block mb-0.5">
+                            🌟 Nilai Jual Unik & Keunggulan Sanghyang:
+                          </span>
+                          <p className="text-[#166534] font-medium leading-relaxed">
+                            {outletItem.sanghyangUSP}
+                          </p>
+                        </div>
+
+                        <div className="rounded-lg bg-[#fefce8] p-2.5 border border-[#fef08a]">
+                          <span className="font-bold text-[#854d0e] block mb-0.5">
+                            🎬 Rekomendasi Sudut Pandang Konten (Content Angle):
+                          </span>
+                          <p className="text-[#713f12] leading-relaxed">
+                            {outletItem.recommendedContent}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW 3: ANALYTICS & MARKET GAPS */}
+          {socialViewMode === "analytics" && (
+            <div className="mt-5 space-y-6">
+              {/* Visual Distribution Bars */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Category Content Mix */}
+                <div className="rounded-xl border border-[#cbd5e1] bg-white p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-[#0f172a] mb-2 flex items-center gap-1.5">
+                    <span>📊</span> Distribusi Tema Konten Kompetitor
+                  </h3>
+                  <p className="text-xs text-[#64748b] mb-4">
+                    Fokus postingan yang paling sering diunggah oleh kompetitor di kawasan Anyer–Carita:
+                  </p>
+                  <div className="space-y-3">
+                    {socialMetrics.categoryList.map((cat) => (
+                      <div key={cat.category} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-[#334155]">{cat.category}</span>
+                          <span className="text-[#059669]">{cat.count} postingan ({cat.pct}%)</span>
+                        </div>
+                        <div className="w-full bg-[#f1f5f9] h-2.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-[#10b981] to-[#047857] h-2.5 rounded-full"
+                            style={{ width: `${cat.pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Platform Share & Engagement Focus */}
+                <div className="rounded-xl border border-[#cbd5e1] bg-white p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#0f172a] mb-2 flex items-center gap-1.5">
+                      <span>📱</span> Peta Kekuatan Platform: Instagram vs TikTok
+                    </h3>
+                    <p className="text-xs text-[#64748b] mb-4">
+                      Proporsi kanal media sosial yang dipakai kompetitor untuk menjangkau wisatawan:
+                    </p>
+                    
+                    {/* Big Platform Progress Bar */}
+                    <div className="w-full bg-slate-100 h-6 rounded-xl overflow-hidden flex font-bold text-[11px] text-white shadow-inner">
+                      <div
+                        style={{ width: `${socialMetrics.igPct}%` }}
+                        className="bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center"
+                      >
+                        Instagram {socialMetrics.igPct}%
+                      </div>
+                      <div
+                        style={{ width: `${socialMetrics.tiktokPct}%` }}
+                        className="bg-slate-900 flex items-center justify-center"
+                      >
+                        TikTok {socialMetrics.tiktokPct}%
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+                      <div className="rounded-lg bg-pink-50 p-3 border border-pink-200">
+                        <span className="text-2xl block mb-1">📸</span>
+                        <span className="text-xs font-bold text-pink-900 block">Instagram Dominan</span>
+                        <p className="text-[11px] text-pink-700 mt-1 leading-tight">
+                          Dipakai untuk visual estetik hotel, wedding chapel, dan menu F&B formal.
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-slate-900 text-white p-3">
+                        <span className="text-2xl block mb-1">🎵</span>
+                        <span className="text-xs font-bold text-emerald-400 block">Peluang Emas TikTok</span>
+                        <p className="text-[11px] text-slate-300 mt-1 leading-tight">
+                          Kompetitor minim garapan konten POV kasual & review jujur. Sanghyang berpeluang viral!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-lg bg-[#ecfdf5] border border-[#86efac] p-3 text-xs text-[#065f46]">
+                    💡 <strong>Kesimpulan Platform:</strong> Manfaatkan format TikTok untuk memperlihatkan keasrian resort dan Onsen Air Belerang Alami yang tidak dimiliki kompetitor Anyer lainnya.
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Market Gap Opportunities */}
+              <div>
+                <h3 className="text-base font-bold text-[#0f392b] mb-3 flex items-center gap-2">
+                  <span>🎯</span> 4 Peluang Celah Pasar Utama (Market Gap Opportunities) untuk Sanghyang
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-[#a7f3d0] bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#065f46]">
+                      <span className="text-xl">♨️</span>
+                      <h4>Celah 1: Monopoli Onsen Air Belerang Alami 24 Jam</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-[#475569] leading-relaxed">
+                      Seluruh kompetitor Anyer (Aston, Mambruk, Novus) hanya memiliki kolam renang biasa. Belum ada satu pun yang memiliki sumber air panas belerang alami vulkanik. Ini adalah pembeda absolut yang dapat digaungkan tim marketing sebagai wisata kesehatan (*wellness tourism*).
+                    </p>
+                    <div className="mt-3 rounded bg-[#f0fdf4] px-2.5 py-1.5 text-[11px] font-semibold text-[#15803d]">
+                      🚀 Taktik: Buat serial TikTok edukasi & relaksasi malam hari di Onsen Sanghyang.
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#a7f3d0] bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#065f46]">
+                      <span className="text-xl">🌅</span>
+                      <h4>Celah 2: Sunset Beachfront Dining Tanpa Tiket Mahal</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-[#475569] leading-relaxed">
+                      The Upper Circle Novus Jiva mematok dinner tebing Rp 580.000++/pax dan Aston mematok harga F&B premium. Sunset Grill Sanghyang menawarkan meja langsung di atas pasir pantai dengan paket seafood sharing terjangkau (Rp 199k untuk 2-3 orang).
+                    </p>
+                    <div className="mt-3 rounded bg-[#f0fdf4] px-2.5 py-1.5 text-[11px] font-semibold text-[#15803d]">
+                      🚀 Taktik: Kampanyekan tagline &ldquo;Sunset Dining Terbaik Anyer di Atas Pasir Pantai Tanpa Minimum Spend Selangit&rdquo;.
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#a7f3d0] bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#065f46]">
+                      <span className="text-xl">👨‍👩‍👧</span>
+                      <h4>Celah 3: Luas Wilayah Resort Ramah Keluarga & Outbound</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-[#475569] leading-relaxed">
+                      Hotel vertikal modern seperti Aston memiliki keterbatasan lahan tanah terbuka. Sanghyang memiliki area taman pantai yang sangat luas, aman untuk anak-anak berlarian bebas, bermain layangan, serta outbound rombongan gathering perusahaan.
+                    </p>
+                    <div className="mt-3 rounded bg-[#f0fdf4] px-2.5 py-1.5 text-[11px] font-semibold text-[#15803d]">
+                      🚀 Taktik: Tawarkan paket 'Family Weekend Picnic' di halaman rumput pantai Sanghyang.
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#a7f3d0] bg-white p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#065f46]">
+                      <span className="text-xl">🎁</span>
+                      <h4>Celah 4: Bundling Menginap + Free Akses Onsen 24 Jam</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-[#475569] leading-relaxed">
+                      Untuk membalas promo diskon 10-20% Aston dan Mambruk, Sanghyang tidak perlu memangkas harga secara brutal. Cukup berikan fasilitas nilai tambah: Menginap di Cottage Sanghyang + Gratis Berendam Onsen Belerang + Voucher Diskon 25% Sunset Grill.
+                    </p>
+                    <div className="mt-3 rounded bg-[#f0fdf4] px-2.5 py-1.5 text-[11px] font-semibold text-[#15803d]">
+                      🚀 Taktik: Nilai persepsi fasilitas onsen bernilai tinggi di mata tamu tanpa menambah cost signifikan.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           </section>
         )}
 
