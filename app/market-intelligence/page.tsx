@@ -139,6 +139,25 @@ type Summary = {
     schedule: string;
     heartbeatSummary: string;
   };
+  competitorSocialRadar?: {
+    id: string;
+    competitorName: string;
+    competitorHandle: string;
+    platform: 'instagram' | 'tiktok';
+    title: string;
+    category: string;
+    description: string;
+    startsAt: string;
+    endsAt?: string | null;
+    price?: number | null;
+    originalPrice?: number | null;
+    discount?: number | null;
+    source: string;
+    sourceUrl: string;
+    imageUrl?: string | null;
+    status: 'active' | 'upcoming' | 'expired';
+    counterStrategy: string;
+  }[];
 };
 
 type TrendData = { location: string; source: string; fetchedAt: string; trends: { topic: string; traffic: string; publishedAt: string; relevant: boolean }[] };
@@ -204,6 +223,10 @@ export default function MarketIntelligencePage() {
   const [refreshingRates, setRefreshingRates] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [promoCompetitorFilter, setPromoCompetitorFilter] = useState<string>("all");
+  const [promoCategoryFilter, setPromoCategoryFilter] = useState<string>("all");
+  const [promoPlatformFilter, setPromoPlatformFilter] = useState<string>("all");
 
   const downloadExecutivePdf = async () => {
     if (!data) return;
@@ -1136,6 +1159,257 @@ export default function MarketIntelligencePage() {
         )}
 
         {/* TAB SPECIFIC CONTENT (KULINER, ACARA, HIBURAN, DESTINASI, PROMO) */}
+        {/* RADAR PROMO & EVENT MEDIA SOSIAL KOMPETITOR (INSTAGRAM & TIKTOK LIVE RADAR) */}
+        {(tab === "Promo" || tab === "Acara") && (
+          <section className="mb-6 rounded-2xl border border-[#bbf7d0] bg-gradient-to-br from-[#f0fdf4] via-white to-[#f0fdfa] p-5 md:p-6 shadow-[0_8px_30px_rgba(16,185,129,0.08)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#86efac] bg-white px-3 py-1 text-xs font-bold text-[#166534] shadow-sm">
+                  <span className="flex h-2 w-2 rounded-full bg-[#22c55e] animate-pulse" />
+                  📡 Live Competitor Radar (Instagram & TikTok)
+                </div>
+                <h2 className="mt-2 text-xl md:text-2xl font-bold text-[#0f392b]">
+                  Radar Promo & Event Kompetitor Terkini
+                </h2>
+                <p className="mt-1 text-sm text-[#4b6358] max-w-2xl leading-relaxed">
+                  Monitoring postingan promosi, diskon kamar & F&B, konser/live music, serta kampanye viral media sosial kompetitor (@astonanyer, @mambrukhotelanyer, @novusjivaanyer, @thejayakartaanyer, dll) yang dilengkapi rekomendasi taktis counter-strategy untuk outlet Sanghyang.
+                </p>
+              </div>
+
+              {/* STATS OVERVIEW PILLS */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-lg border border-[#86efac] bg-white px-3 py-1.5 text-xs font-semibold text-[#15803d] shadow-sm">
+                  🟢 {(data?.competitorSocialRadar || []).filter((r) => r.status === "active").length} Promo Aktif
+                </span>
+                <span className="rounded-lg border border-[#fde68a] bg-white px-3 py-1.5 text-xs font-semibold text-[#b45309] shadow-sm">
+                  🟡 {(data?.competitorSocialRadar || []).filter((r) => r.status === "upcoming").length} Segera Datang
+                </span>
+                <span className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8] shadow-sm">
+                  📸 {(data?.competitorSocialRadar || []).filter((r) => r.platform === "instagram").length} Instagram
+                </span>
+                <span className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f172a] shadow-sm">
+                  🎵 {(data?.competitorSocialRadar || []).filter((r) => r.platform === "tiktok").length} TikTok
+                </span>
+              </div>
+            </div>
+
+            {/* FILTER BAR */}
+            <div className="mt-6 space-y-3 rounded-xl border border-[#d1fae5] bg-white/80 p-4 backdrop-blur-sm">
+              {/* FILTER BY COMPETITOR */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b] mr-1">
+                  🏨 Hotel:
+                </span>
+                {[
+                  { key: "all", label: "Semua Kompetitor" },
+                  { key: "Aston", label: "Aston Anyer (@astonanyer)" },
+                  { key: "Novus", label: "Novus Jiva (@novusjivaanyer)" },
+                  { key: "Mambruk", label: "Mambruk Hotel (@mambrukhotelanyer)" },
+                  { key: "Jayakarta", label: "The Jayakarta (@thejayakartaanyer)" },
+                  { key: "Pantai", label: "Kafe Pantai & Viral (Andalan, Omah Laut)" },
+                ].map((item) => {
+                  const active = promoCompetitorFilter === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setPromoCompetitorFilter(item.key)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                        active
+                          ? "bg-[#166534] text-white shadow-sm"
+                          : "border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* FILTER BY CATEGORY & PLATFORM */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#f1f5f9]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b] mr-1">
+                    🏷️ Kategori:
+                  </span>
+                  {[
+                    { key: "all", label: "Semua Kategori" },
+                    { key: "Kamar", label: "🛏️ Kamar & Menginap" },
+                    { key: "F&B", label: "🍽️ F&B & Kuliner" },
+                    { key: "Acara", label: "🎵 Acara & Live Music" },
+                    { key: "Keluarga", label: "👨‍👩‍👧 Keluarga & Anak" },
+                    { key: "Wellness", label: "🧘‍♀️ Wellness & Relaksasi" },
+                  ].map((item) => {
+                    const active = promoCategoryFilter === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setPromoCategoryFilter(item.key)}
+                        className={`rounded-lg px-2 py-0.5 text-xs font-medium transition-all ${
+                          active
+                            ? "bg-[#047857] text-white"
+                            : "bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
+                    Platform:
+                  </span>
+                  {[
+                    { key: "all", label: "Semua" },
+                    { key: "instagram", label: "📸 IG" },
+                    { key: "tiktok", label: "🎵 TikTok" },
+                  ].map((item) => {
+                    const active = promoPlatformFilter === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setPromoPlatformFilter(item.key)}
+                        className={`rounded-md px-2 py-0.5 text-xs font-medium transition-all ${
+                          active
+                            ? "bg-[#1e293b] text-white"
+                            : "bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* RADAR ITEMS GRID */}
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(data?.competitorSocialRadar || [])
+                .filter((r) => {
+                  if (promoCompetitorFilter === "Aston") return r.competitorName.toLowerCase().includes("aston");
+                  if (promoCompetitorFilter === "Novus") return r.competitorName.toLowerCase().includes("novus");
+                  if (promoCompetitorFilter === "Mambruk") return r.competitorName.toLowerCase().includes("mambruk");
+                  if (promoCompetitorFilter === "Jayakarta") return r.competitorName.toLowerCase().includes("jayakarta");
+                  if (promoCompetitorFilter === "Pantai") return !r.competitorName.toLowerCase().includes("aston") && !r.competitorName.toLowerCase().includes("novus") && !r.competitorName.toLowerCase().includes("mambruk") && !r.competitorName.toLowerCase().includes("jayakarta");
+                  return true;
+                })
+                .filter((r) => {
+                  if (promoCategoryFilter === "Kamar") return r.category.includes("Kamar");
+                  if (promoCategoryFilter === "F&B") return r.category.includes("F&B") || r.category.includes("Kuliner");
+                  if (promoCategoryFilter === "Acara") return r.category.includes("Acara") || r.category.includes("Music");
+                  if (promoCategoryFilter === "Keluarga") return r.category.includes("Keluarga") || r.category.includes("Anak");
+                  if (promoCategoryFilter === "Wellness") return r.category.includes("Wellness") || r.category.includes("Relaksasi");
+                  return true;
+                })
+                .filter((r) => {
+                  if (promoPlatformFilter === "instagram") return r.platform === "instagram";
+                  if (promoPlatformFilter === "tiktok") return r.platform === "tiktok";
+                  return true;
+                })
+                .map((item) => (
+                  <article
+                    key={item.id}
+                    className="flex flex-col justify-between rounded-xl border border-[#cbd5e1] bg-white p-4 shadow-sm transition-all hover:border-[#34d399] hover:shadow-md"
+                  >
+                    <div>
+                      {/* CARD HEADER */}
+                      <div className="flex items-start justify-between gap-2 border-b border-[#f1f5f9] pb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f1f5f9] text-base">
+                            {item.platform === "instagram" ? "📸" : "🎵"}
+                          </span>
+                          <div className="min-w-0">
+                            <h4 className="truncate text-xs font-bold text-[#0f172a]">
+                              {item.competitorName}
+                            </h4>
+                            <p className="truncate text-[11px] font-mono text-[#0284c7]">
+                              {item.competitorHandle}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            item.status === "active"
+                              ? "border border-[#86efac] bg-[#dcfce7] text-[#15803d]"
+                              : item.status === "upcoming"
+                                ? "border border-[#fde68a] bg-[#fef3c7] text-[#b45309]"
+                                : "border border-[#e2e8f0] bg-[#f1f5f9] text-[#64748b]"
+                          }`}
+                        >
+                          {item.status === "active"
+                            ? "🟢 Aktif"
+                            : item.status === "upcoming"
+                              ? "🟡 Segera"
+                              : "⚪ Berakhir"}
+                        </span>
+                      </div>
+
+                      {/* BADGES ROW */}
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-md bg-[#e0f2fe] px-2 py-0.5 text-[11px] font-semibold text-[#0369a1]">
+                          {item.category}
+                        </span>
+                        {item.discount != null && item.discount > 0 && (
+                          <span className="rounded-md bg-[#ffedd5] px-2 py-0.5 text-[11px] font-extrabold text-[#c2410c] border border-[#fed7aa]">
+                            🔥 Diskon {item.discount}%
+                          </span>
+                        )}
+                        {item.price != null && item.price > 0 && (
+                          <span className="rounded-md bg-[#fef9c3] px-2 py-0.5 text-[11px] font-bold text-[#854d0e] border border-[#fef08a]">
+                            💰 IDR {item.price.toLocaleString("id-ID")}
+                          </span>
+                        )}
+                        <span className="rounded-md bg-[#f8fafc] px-2 py-0.5 text-[11px] font-medium text-[#64748b] border border-[#e2e8f0]">
+                          📅 {fmt(item.startsAt)} {item.endsAt ? `s/d ${fmt(item.endsAt)}` : ""}
+                        </span>
+                      </div>
+
+                      {/* TITLE & DESCRIPTION */}
+                      <h3 className="mt-2.5 text-sm font-bold text-[#1e293b] leading-snug">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1.5 text-xs leading-relaxed text-[#475569] italic bg-[#f8fafc] p-2.5 rounded-lg border border-[#e2e8f0]/60">
+                        &ldquo;{item.description}&rdquo;
+                      </p>
+
+                      {/* SANGHYANG COUNTER STRATEGY */}
+                      <div className="mt-3 rounded-lg border border-[#a7f3d0] bg-[#f0fdf9] p-3 text-xs leading-relaxed">
+                        <div className="flex items-center gap-1.5 font-bold text-[#065f46]">
+                          <span>💡</span>
+                          <span>Rekomendasi Taktis Sanghyang:</span>
+                        </div>
+                        <p className="mt-1 text-[#047857]">
+                          {item.counterStrategy}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* CARD FOOTER WITH DIRECT LINK */}
+                    <div className="mt-4 flex items-center justify-between border-t border-[#f1f5f9] pt-3 text-xs">
+                      <span className="text-[11px] text-[#94a3b8] font-mono">
+                        Sumber: {item.source}
+                      </span>
+                      <a
+                        href={item.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#34d399] bg-[#ecfdf5] px-3 py-1 font-semibold text-[#065f46] transition-all hover:bg-[#d1fae5] hover:border-[#059669]"
+                      >
+                        <span>{item.platform === "instagram" ? "📸 Buka di Instagram" : "🎵 Tonton di TikTok"}</span>
+                        <span className="text-sm font-bold">↗</span>
+                      </a>
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </section>
+        )}
+
         {tab !== "Ringkasan" && tab !== "Ulasan" && (
           <section className="mb-5 rounded-xl border border-[#dbe3eb] bg-white p-5 shadow-[0_8px_24px_rgba(19,40,64,0.05)]">
             <div className="flex items-start justify-between gap-4">

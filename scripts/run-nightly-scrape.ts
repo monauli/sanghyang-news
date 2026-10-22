@@ -1,10 +1,12 @@
 import { db } from "../lib/db";
 import { collectGoogleHotelMarketRates } from "../lib/market/collect-rates";
 import { runNewsNow } from "../lib/market/run-news";
+import { syncCompetitorSocialPromoEvents } from "../lib/market/sync-social-promos";
 
-async function recordNightlyHeartbeat(stats: { newsStatus: string; ratesCount: number }) {
+async function recordNightlyHeartbeat(stats: { newsStatus: string; ratesCount: number; promosCount?: number }) {
   const fp = "nightly-sync-heartbeat";
   const now = new Date();
+  const summaryText = `Pembaruan otomatis selesai pada ${now.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB. Status berita: ${stats.newsStatus}, tarif hotel terpantau: ${stats.ratesCount}, promo & event kompetitor: ${stats.promosCount ?? 0}.`;
   try {
     const existing = await db.marketInsight.findFirst({ where: { fingerprint: fp } });
     if (existing) {
@@ -12,9 +14,9 @@ async function recordNightlyHeartbeat(stats: { newsStatus: string; ratesCount: n
         where: { id: existing.id },
         data: {
           title: "[Otomasi Malam] Sinkronisasi Intelijen Pasar Terakhir",
-          summary: `Pembaruan otomatis selesai pada ${now.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB. Status berita: ${stats.newsStatus}, tarif hotel terpantau: ${stats.ratesCount}.`,
+          summary: summaryText,
           evidence: { ...stats, syncedAt: now.toISOString(), timezone: "WIB" },
-          sourceReferences: ["GitHub Actions Scheduled Runner", "Google Hotels", "Google News"],
+          sourceReferences: ["GitHub Actions Scheduled Runner", "Google Hotels", "Google News", "Instagram & TikTok Competitor Radar"],
           confidence: 100,
           priority: 100,
           status: "active",
@@ -27,9 +29,9 @@ async function recordNightlyHeartbeat(stats: { newsStatus: string; ratesCount: n
           activeFingerprint: fp,
           type: "insight",
           title: "[Otomasi Malam] Sinkronisasi Intelijen Pasar Terakhir",
-          summary: `Pembaruan otomatis selesai pada ${now.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB. Status berita: ${stats.newsStatus}, tarif hotel terpantau: ${stats.ratesCount}.`,
+          summary: summaryText,
           evidence: { ...stats, syncedAt: now.toISOString(), timezone: "WIB" },
-          sourceReferences: ["GitHub Actions Scheduled Runner", "Google Hotels", "Google News"],
+          sourceReferences: ["GitHub Actions Scheduled Runner", "Google Hotels", "Google News", "Instagram & TikTok Competitor Radar"],
           confidence: 100,
           priority: 100,
           status: "active",
@@ -47,6 +49,7 @@ async function main() {
   let failed = false;
   let newsStatus = "unknown";
   let ratesCount = 0;
+  let promosCount = 0;
 
   try {
     const result = await runNewsNow();
@@ -71,7 +74,15 @@ async function main() {
   }
 
   try {
-    await recordNightlyHeartbeat({ newsStatus, ratesCount });
+    const promoSync = await syncCompetitorSocialPromoEvents();
+    promosCount = promoSync.totalSynced;
+    console.log(`[nightly] competitor social promos synced: ${promosCount} (active: ${promoSync.activeCount})`);
+  } catch (error) {
+    console.warn("[nightly] competitor social promos sync failed:", error);
+  }
+
+  try {
+    await recordNightlyHeartbeat({ newsStatus, ratesCount, promosCount });
   } catch (error) {
     console.warn("[nightly] heartbeat recording failed:", error);
   } finally {

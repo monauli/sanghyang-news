@@ -4,6 +4,7 @@ import { NAMA_COOKIE, tokenSah } from '@/lib/sandi';
 import { transformMarketSummary, type SummaryPeriod, type SummaryRow } from '@/lib/market/summary';
 import { matchComparablePrices, type PriceSnapshot } from '@/lib/market/price-scraper';
 import { isMarketRelevant } from '@/lib/market/classifier';
+import { AUTHENTIC_COMPETITOR_PROMOS_AND_EVENTS } from '@/lib/market/sync-social-promos';
 
 const auth = (request: Request) => { const password = process.env.APP_PASSWORD; const token = request.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${NAMA_COOKIE}=([^;]+)`))?.[1]; return Boolean(password && tokenSah(token, password)); };
 const periods = new Set<SummaryPeriod>(['30d', '90d', 'year']);
@@ -385,6 +386,43 @@ export async function GET(request: Request) {
     heartbeatSummary: heartbeatInsight?.summary || 'Pembaruan otomatis terjadwal via GitHub Actions Cloud (00:15 WIB)',
   };
 
+  const now = new Date();
+  const competitorSocialRadar = AUTHENTIC_COMPETITOR_PROMOS_AND_EVENTS.map((item) => {
+    const matchedComp = competitors.find(
+      (c) =>
+        c.name.toLowerCase().includes(item.competitorName.toLowerCase()) ||
+        item.competitorName.toLowerCase().includes(c.name.toLowerCase())
+    );
+    const dbPromo = promotions.find((p) => p.sourceUrl === item.sourceUrl);
+
+    let status: 'active' | 'upcoming' | 'expired' = 'active';
+    if (item.endsAt && item.endsAt < now) {
+      status = 'expired';
+    } else if (item.startsAt > now) {
+      status = 'upcoming';
+    }
+
+    return {
+      id: dbPromo?.id || item.sourceUrl,
+      competitorName: matchedComp?.name || item.competitorName,
+      competitorHandle: item.competitorHandle,
+      platform: item.platform,
+      title: item.title,
+      category: item.category,
+      description: item.description,
+      startsAt: item.startsAt.toISOString(),
+      endsAt: item.endsAt ? item.endsAt.toISOString() : null,
+      price: item.price ?? (dbPromo?.price ? Number(dbPromo.price) : null),
+      originalPrice: item.originalPrice ?? (dbPromo?.originalPrice ? Number(dbPromo.originalPrice) : null),
+      discount: item.discount ?? (dbPromo?.discount ? Number(dbPromo.discount) : null),
+      source: item.source,
+      sourceUrl: item.sourceUrl,
+      imageUrl: item.imageUrl || dbPromo?.imageUrl || null,
+      status,
+      counterStrategy: item.counterStrategy,
+    };
+  });
+
   return NextResponse.json({
     ...summary,
     comparison,
@@ -396,6 +434,7 @@ export async function GET(request: Request) {
     actionFindings,
     executiveSummary,
     syncStatus,
+    competitorSocialRadar,
   });
 }
 
